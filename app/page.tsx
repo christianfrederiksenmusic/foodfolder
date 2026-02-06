@@ -147,7 +147,8 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   React.useEffect(() => {
     const onError = (event: any) => {
       try {
-        const msg = event?.message || String(event?.error?.message || event?.error || event);
+        const loc = event?.filename ? ` @ ${event.filename}:${event.lineno ?? "?"}:${event.colno ?? "?"}` : "";
+        const msg = (event?.message || String(event?.error?.message || event?.error || event)) + loc;
         const stack = event?.error?.stack ? "\n" + event.error.stack : "";
         console.error("GLOBAL_ERROR:", msg, event?.error);
         setError(`GLOBAL_ERROR: ${msg}${stack}`);
@@ -417,7 +418,16 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
 
     <button
       className="q-btn"
-      onClick={callApi}
+      onClick={async () => {
+  try {
+    await callApi();
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    const stack = e?.stack ? "\n" + e.stack : "";
+    console.error("onClick caught:", msg, e);
+    setError(`onClick caught: ${msg}${stack}`);
+  }
+}}
       disabled={apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl)}
       style={{
         padding: "10px 14px",
