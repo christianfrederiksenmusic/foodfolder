@@ -142,12 +142,16 @@ Return ONLY strict JSON with this schema:
   ]
 }
 
-Rules:
+Hard rules (important):
 - Use Danish names when possible.
-- confidence is 0.0 to 1.0.
-- Include only food/ingredients (no brands, no containers).
-- If unsure, include the item with low confidence rather than guessing confidently.
-- Keep the list reasonably short (max 25).
+- Only include items that are clearly visible in the photo.
+- Do NOT guess generic pantry items like "olie", "eddike", "krydderier", "sauce", "syltetøj" unless the label/text is clearly readable OR the packaging is unmistakable.
+- If you are not sure, omit the item rather than guessing.
+- confidence is 0.0 to 1.0, but use it conservatively:
+  - 0.90+ only if label is readable or the item is unmistakable
+  - 0.70–0.89 if strongly likely from shape/packaging
+  - below 0.70 only if still useful and clearly present
+- Max 25 items.
 `.trim();
 
   const payload = {
@@ -212,12 +216,22 @@ Rules:
     }
 
     const items = Array.isArray(parsedJson?.items) ? parsedJson.items : [];
+    const bannedGeneric = new Set(["olie","eddike","krydderier","sauce","syltetøj","dressing"]);
+    const cleanedItems = items
+      .map((it: any) => ({
+        name: String(it?.name ?? "").trim().toLowerCase(),
+        confidence: typeof it?.confidence === "number" ? it.confidence : undefined,
+      }))
+      .filter((it: any) => it.name.length > 0)
+      // drop generic guesses unless very high confidence
+      .filter((it: any) => !bannedGeneric.has(it.name) || (typeof it.confidence === "number" && it.confidence >= 0.9));
+
     const ingredients = items
       .map((it: any) => String(it?.name ?? "").trim())
       .filter((s: string) => s.length > 0);
 
     return NextResponse.json({
-      items,
+      items: cleanedItems,
       ingredients,
       meta: {
         receivedImageBytesApprox: Math.round(base64.length * 0.75),
