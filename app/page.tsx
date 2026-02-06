@@ -1,5 +1,20 @@
 "use client";
 
+function base64ByteLength(b64: string): number {
+  const cleaned = (b64 ?? "").replace(/\s/g, "");
+  if (!cleaned) return 0;
+  const pad = cleaned.endsWith("==") ? 2 : cleaned.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((cleaned.length * 3) / 4) - pad);
+}
+
+function dataUrlByteLength(dataUrl: string): number {
+  const t = (dataUrl ?? "").trim();
+  const comma = t.indexOf(",");
+  if (comma === -1) return 0;
+  return base64ByteLength(t.slice(comma + 1));
+}
+
+
 import React, { useMemo, useRef, useState } from "react";
 
 type ApiItem = { name: string; confidence?: number };
