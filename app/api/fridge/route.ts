@@ -156,20 +156,27 @@ Return ONLY strict JSON with this schema:
   ]
 }
 
+Method (important):
+- Scan systematically in zones: top shelf, middle shelf, bottom shelf, door shelves, drawers.
+- Be exhaustive: list all visible food/ingredients even if you are not fully sure.
+- If unsure, include the item with LOW confidence (0.35–0.60). Do not omit everything.
+
 Rules:
 - Use Danish names when possible.
-- Be exhaustive: scan the whole image (top-left to bottom-right) and list all visible food/ingredients.
-- If unsure, include the item with LOW confidence (do not omit everything).
 - Avoid generic guesses like "olie", "eddike", "krydderier", "sauce", "syltetøj", "dressing" unless label is readable or packaging is unmistakable.
-- Max 35 items.
+- confidence is 0.0–1.0 and must reflect evidence:
+  - 0.90+ only if label is readable or unmistakable packaging
+  - 0.70–0.89 strong visual evidence
+  - 0.35–0.69 plausible but uncertain (still include)
+- Max 50 items.
 `.trim();
 
-  const mode = body.mode === "thorough" ? "thorough" : "conservative";
+const mode = "thorough";
   const prompt = mode === "thorough" ? promptThorough : promptConservative;
 
   const payload = {
-    model: mode === "thorough" ? "claude-3-5-sonnet-20241022" : "claude-3-haiku-20240307",
-    max_tokens: mode === "thorough" ? 900 : 500,
+    model: "claude-3-5-sonnet-20241022",
+    max_tokens: 1200,
     temperature: 0,
     messages: [
       {
@@ -236,10 +243,9 @@ Rules:
         confidence: typeof it?.confidence === "number" ? it.confidence : undefined,
       }))
       .filter((it: any) => it.name.length > 0)
-      // drop generic guesses unless very high confidence
-      .filter((it: any) => !bannedGeneric.has(it.name) || (typeof it.confidence === "number" && it.confidence >= 0.9));
-
-    const ingredients = items
+      // keep generics only if fairly high confidence
+      .filter((it: any) => !bannedGeneric.has(it.name) || (typeof it.confidence === "number" && it.confidence >= 0.85));
+const ingredients = items
       .map((it: any) => String(it?.name ?? "").trim())
       .filter((s: string) => s.length > 0);
 

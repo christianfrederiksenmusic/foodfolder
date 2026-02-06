@@ -121,7 +121,6 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   const [busy, setBusy] = useState(false);
   const [apiBusy, setApiBusy] = useState(false);
   const [apiResult, setApiResult] = useState<ApiResponse>(null);
-  const [mode, setMode] = useState<"conservative" | "thorough">("conservative");
   const [error, setError] = useState("");
 
   const MAX_DIM = 1280;
@@ -193,7 +192,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: chosen.dataUrl, mode }),
+        body: JSON.stringify({ image: chosen.dataUrl, mode: "thorough" }),
       });
 
       const json = await res.json();
@@ -381,9 +380,6 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
             {apiBusy ? "Analyserer…" : "Analyser billede"}
           </button>
         </div>
-        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 700 }}>Scan-mode:</div>
-
           <button
             type="button"
             className="q-btn q-btn-secondary"
