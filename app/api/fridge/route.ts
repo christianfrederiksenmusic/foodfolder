@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-type Body = { image?: string | null };
+type Body = {
+  image?: string | null;
+  imageBase64?: string | null;   // may be a dataURL in our frontend
+  imageDataUrl?: string | null;  // may be a dataURL
+  base64?: string | null;        // raw base64 (no prefix)
+};
 
 // Simple safety-belt for v1. Note: In serverless, memory may reset between invocations.
 // Still useful to prevent rapid accidental spam during development.
@@ -46,6 +51,20 @@ function extractBase64DataUrl(dataUrl: string) {
   return { mediaType: match[1], base64: match[2] };
 }
 
+function looksLikeBase64(s: string) {
+  // permissive: allow newlines and url-safe variants
+  const t = s.replace(/\s+/g, "");
+  if (t.length < 32) return false;
+  return /^[A-Za-z0-9+/_-]+=*$/.test(t);
+}
+
+function pickFirstString(...values: Array<unknown>): string | null {
+  for (const v of values) {
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const rl = checkRateLimit(req);
   if (!rl.ok) {
@@ -68,28 +87,49 @@ export async function POST(req: Request) {
     body = (await req.json()) as Body;
   } catch {
     return NextResponse.json(
-      { error: "Invalid JSON body. Expected { image: <base64 data url> }" },
+      { error: "Invalid JSON body. Expected image payload." },
       { status: 400 }
     );
   }
 
-  if (
-    !body.image ||
-    typeof body.image !== "string" ||
-    !body.image.startsWith("data:image/")
-  ) {
+  // Accept multiple possible fields from frontend
+  const candidate = pickFirstString(
+    body.image,
+    body.imageBase64,
+    body.imageDataUrl,
+    body.base64
+  );
+
+  if (!candidate) {
     return NextResponse.json(
       { error: "Missing image. Upload an image and try again." },
       { status: 400 }
     );
   }
 
-  const parsed = extractBase64DataUrl(body.image);
-  if (!parsed) {
-    return NextResponse.json(
-      { error: "Invalid image data URL format." },
-      { status: 400 }
-    );
+  // Determine whether candidate is a data URL or raw base64
+  let mediaType = "image/jpeg";
+  let base64 = "";
+
+  if (candidate.startsWith("data:image/")) {
+    const parsed = extractBase64DataUrl(candidate);
+    if (!parsed) {
+      return NextResponse.json(
+        { error: "Invalid image data URL format." },
+        { status: 400 }
+      );
+    }
+    mediaType = parsed.mediaType;
+    base64 = parsed.base64;
+  } else {
+    // raw base64 path
+    if (!looksLikeBase64(candidate)) {
+      return NextResponse.json(
+        { error: "Invalid image base64 data." },
+        { status: 400 }
+      );
+    }
+    base64 = candidate.replace(/\s+/g, "");
   }
 
   const prompt = `
@@ -123,8 +163,8 @@ Rules:
             type: "image",
             source: {
               type: "base64",
-              media_type: parsed.mediaType,
-              data: parsed.base64,
+              media_type: mediaType,
+              data: base64,
             },
           },
         ],
@@ -172,10 +212,15 @@ Rules:
     }
 
     const items = Array.isArray(parsedJson?.items) ? parsedJson.items : [];
+    const ingredients = items
+      .map((it: any) => String(it?.name ?? "").trim())
+      .filter((s: string) => s.length > 0);
+
     return NextResponse.json({
       items,
+      ingredients,
       meta: {
-        receivedImageBytesApprox: Math.round(body.image.length * 0.75),
+        receivedImageBytesApprox: Math.round(base64.length * 0.75),
         model: payload.model,
         rateLimitRemainingToday: rl.remaining,
       },
