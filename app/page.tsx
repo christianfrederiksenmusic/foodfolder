@@ -352,88 +352,91 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       </section>
 
       <section
-        style={{
-          border: "1px solid rgba(0,0,0,0.12)",
-          borderRadius: 12,
-          padding: 16,
-          marginTop: 16,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontWeight: 700 }}>
-            Preview (det billede der sendes)
-          </div>
+  style={{
+    border: "1px solid rgba(0,0,0,0.12)",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  }}
+>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+    <div style={{ fontWeight: 700 }}>Preview (det billede der sendes)</div>
 
-          <button className="q-btn"
-            onClick={callApi}
-            disabled={apiBusy || busy || !chosen.dataUrl}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "1px solid rgba(0,0,0,0.18)",
-              background: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.06)" : "black",
-              color: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.5)" : "white",
-              cursor: apiBusy || busy || !chosen.dataUrl ? "not-allowed" : "pointer",
-              fontWeight: 700,
-            }}
-          >
-            {apiBusy ? "Analyserer…" : "Analyser billede"}
-          </button>
+    <button
+      className="q-btn"
+      onClick={callApi}
+      disabled={apiBusy || busy || !chosen.dataUrl}
+      style={{
+        padding: "10px 14px",
+        borderRadius: 10,
+        border: "1px solid rgba(0,0,0,0.18)",
+        background: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.06)" : "black",
+        color: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.5)" : "white",
+        cursor: apiBusy || busy || !chosen.dataUrl ? "not-allowed" : "pointer",
+        fontWeight: 700,
+      }}
+    >
+      {apiBusy ? "Analyserer…" : "Analyser billede"}
+    </button>
+  </div>
+
+  <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "stretch" }}>
+    <div
+      style={{
+        flex: "1 1 260px",
+        borderRadius: 10,
+        background: "rgba(0,0,0,0.03)",
+        border: "1px solid rgba(0,0,0,0.10)",
+        padding: 12,
+        minHeight: 280,
+      }}
+    >
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Analyse</div>
+      <div style={{ fontSize: 12, opacity: 0.75 }}>
+        Grundig analyse (thorough). Finder flere ting (dyrere).
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+        <div>
+          <strong>Sendt til API:</strong> {chosen.label}
         </div>
-          
-
-
-          
-
-
-          <div style={{ fontSize: 12, opacity: 0.75 }}>
-            {mode === "thorough" ? "Finder flere ting (dyrere)." : "Færre gæt (billigere)."}
-          </div>
+        <div style={{ marginTop: 6 }}>
+          <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
         </div>
+      </div>
+    </div>
 
+    <div
+      style={{
+        flex: "2 1 420px",
+        borderRadius: 10,
+        overflow: "hidden",
+        background: "rgba(0,0,0,0.03)",
+        border: "1px solid rgba(0,0,0,0.10)",
+        height: 280,
+        maxHeight: 280,
+        padding: 12,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {chosen.dataUrl ? (
+        <img
+          src={chosen.dataUrl}
+          alt="Chosen preview"
+          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+        />
+      ) : (
+        <div style={{ opacity: 0.6 }}>Ingen preview</div>
+      )}
+    </div>
+  </div>
 
-        <div
-          style={{
-            marginTop: 12,
-            borderRadius: 10,
-            overflow: "hidden",
-            background: "rgba(0,0,0,0.03)",
-            border: "1px solid rgba(0,0,0,0.10)",
-            height: 280,
-            maxHeight: 280,
-            padding: 12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {chosen.dataUrl ? (
-            <img
-              src={chosen.dataUrl}
-              alt="Chosen preview"
-              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
-            />
-          ) : (
-            <div style={{ opacity: 0.6 }}>Ingen preview</div>
-          )}
-        </div>
-      </section>
-          </div>
-          <div>
+  {error ? <div style={{ marginTop: 10, color: "crimson" }}>{error}</div> : null}
+</section>
 
-
-
-      
-
-
-      
-
-          </div>
-          <div>
-
-
-
-      <section
+<section
         style={{
           border: "1px solid rgba(0,0,0,0.12)",
           borderRadius: 12,
