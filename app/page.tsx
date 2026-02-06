@@ -244,7 +244,172 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         og sender kun den mindste til API’et.
       </p>
 
+      
       <section
+        style={{
+          marginTop: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.2fr 0.8fr",
+            gap: 16,
+            alignItems: "start",
+          }}
+        >
+          <div>
+<section
+        style={{
+          border: "1px solid rgba(0,0,0,0.12)",
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>Vælg billede</label>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPickFile}
+            style={{ position: "absolute", left: -99999, width: 1, height: 1, opacity: 0 }}
+          />
+
+          <button
+            type="button"
+            className="q-btn q-btn-primary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: busy ? "rgba(0,0,0,0.06)" : "black",
+              color: busy ? "rgba(0,0,0,0.5)" : "white",
+              cursor: busy ? "not-allowed" : "pointer",
+              fontWeight: 800,
+              letterSpacing: 0.2,
+            }}
+          >
+            {pickedFileInfo ? "Skift billede" : "Upload foto"}
+          </button>
+
+          {pickedFileInfo ? (
+            <button
+              type="button"
+              className="q-btn q-btn-secondary"
+              onClick={() => {
+                setPickedFileInfo(null);
+                setOriginalDataUrl("");
+                setJpegDataUrl("");
+                setJpegDims(null);
+                setApiResult(null);
+                setError("");
+              }}
+              disabled={busy || apiBusy}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: busy || apiBusy ? "rgba(0,0,0,0.06)" : "white",
+                color: "black",
+                cursor: busy || apiBusy ? "not-allowed" : "pointer",
+                fontWeight: 800,
+                letterSpacing: 0.2,
+              }}
+            >
+              Fjern
+            </button>
+          ) : null}
+        </div><div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
+          <div>
+            <strong>File:</strong>{" "}
+            {pickedFileInfo
+              ? `${pickedFileInfo.name} · ${pickedFileInfo.type} · ${formatBytes(pickedFileInfo.size)}`
+              : "(ingen valgt endnu)"}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Original:</strong> {originalDataUrl ? formatBytes(originalBytes) : "-"}
+            {" · "}
+            <strong>Komprimeret:</strong> {jpegDataUrl ? formatBytes(jpegBytes) : "-"}
+            {jpegDims ? <span style={{ opacity: 0.75 }}> (ca. {jpegDims.w}x{jpegDims.h})</span> : null}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Sendt til API:</strong> {chosen.label}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
+          </div>
+        </div>
+
+        {error ? <div style={{ marginTop: 10, color: "crimson" }}>{error}</div> : null}
+      </section>
+
+      <section
+        style={{
+          border: "1px solid rgba(0,0,0,0.12)",
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ fontWeight: 700 }}>
+            Preview (det billede der sendes)
+          </div>
+
+          <button className="q-btn"
+            onClick={callApi}
+            disabled={apiBusy || busy || !chosen.dataUrl}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.06)" : "black",
+              color: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.5)" : "white",
+              cursor: apiBusy || busy || !chosen.dataUrl ? "not-allowed" : "pointer",
+              fontWeight: 700,
+            }}
+          >
+            {apiBusy ? "Analyserer…" : "Analyser billede"}
+          </button>
+        </div>
+
+        <div
+          style={{
+            marginTop: 12,
+            borderRadius: 10,
+            overflow: "hidden",
+            background: "rgba(0,0,0,0.03)",
+            border: "1px solid rgba(0,0,0,0.10)",
+            height: 280,
+            maxHeight: 280,
+            padding: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {chosen.dataUrl ? (
+            <img
+              src={chosen.dataUrl}
+              alt="Chosen preview"
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+            />
+          ) : (
+            <div style={{ opacity: 0.6 }}>Ingen preview</div>
+          )}
+        </div>
+      </section>
+          </div>
+          <div>
+<section
         style={{
           border: "1px solid rgba(0,0,0,0.12)",
           borderRadius: 12,
@@ -444,6 +609,10 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
           <div style={{ opacity: 0.75 }}>Ingen analyse endnu.</div>
         )}
       </section>
+          </div>
+        </div>
+      </section>
+
 
       <div style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
         Note: Hvis originalen er en lille WEBP, kan JPEG-varianten blive større. Derfor vælges altid den mindste payload automatisk.
