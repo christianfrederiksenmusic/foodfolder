@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 
-type Body = { image?: string | null; mode?: "conservative" | "thorough" | null };
+type Body = {
+  image?: string;
+  imageBase64?: string;
+  imageDataUrl?: string;
+  base64?: string;
+  mode?: "thorough" | "conservative" | string;
+};
 
 // Simple safety-belt for v1. Note: In serverless, memory may reset between invocations.
 // Still useful to prevent rapid accidental spam during development.
