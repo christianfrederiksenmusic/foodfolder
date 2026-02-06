@@ -2,14 +2,59 @@ import { NextResponse } from "next/server";
 
 type Body = { image?: string | null };
 
+// Simple safety-belt for v1. Note: In serverless, memory may reset between invocations.
+// Still useful to prevent rapid accidental spam during development.
+const MAX_REQUESTS_PER_IP_PER_DAY = 20;
+const ipCounts: Map<string, { day: string; count: number }> = new Map();
+
+function getUtcDayKey(): string {
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getClientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return "unknown";
+}
+
+function checkRateLimit(req: Request) {
+  const ip = getClientIp(req);
+  const today = getUtcDayKey();
+
+  const entry = ipCounts.get(ip);
+  if (!entry || entry.day !== today) {
+    ipCounts.set(ip, { day: today, count: 1 });
+    return { ok: true, ip, remaining: MAX_REQUESTS_PER_IP_PER_DAY - 1 };
+  }
+
+  if (entry.count >= MAX_REQUESTS_PER_IP_PER_DAY) {
+    return { ok: false, ip, remaining: 0 };
+  }
+
+  entry.count += 1;
+  ipCounts.set(ip, entry);
+  return { ok: true, ip, remaining: MAX_REQUESTS_PER_IP_PER_DAY - entry.count };
+}
+
 function extractBase64DataUrl(dataUrl: string) {
-  // Expected format: data:image/<type>;base64,<payload>
   const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!match) return null;
   return { mediaType: match[1], base64: match[2] };
 }
 
 export async function POST(req: Request) {
+  const rl = checkRateLimit(req);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Rate limit reached for today. Try again tomorrow." },
+      { status: 429 }
+    );
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -28,7 +73,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!body.image || typeof body.image !== "string" || !body.image.startsWith("data:image/")) {
+  if (
+    !body.image ||
+    typeof body.image !== "string" ||
+    !body.image.startsWith("data:image/")
+  ) {
     return NextResponse.json(
       { error: "Missing image. Upload an image and try again." },
       { status: 400 }
@@ -43,8 +92,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Keep payload small-ish: if user uploads huge images, base64 can be massive.
-  // We'll rely on client-side scaling later; for now, we just pass through.
   const prompt = `
 You are an expert at identifying food items from a fridge photo.
 
@@ -105,9 +152,8 @@ Rules:
     }
 
     const data = JSON.parse(raw) as any;
-
-    // Claude returns an array of content blocks; we expect the first text block to be JSON.
     const text = data?.content?.find((c: any) => c?.type === "text")?.text;
+
     if (!text || typeof text !== "string") {
       return NextResponse.json(
         { error: "No text content returned from model." },
@@ -115,12 +161,10 @@ Rules:
       );
     }
 
-    // Parse the JSON Claude produced
     let parsedJson: any;
     try {
       parsedJson = JSON.parse(text);
     } catch {
-      // If the model wrapped JSON in extra text, fail loudly so we can tighten prompt
       return NextResponse.json(
         { error: `Model did not return pure JSON. Got: ${text.slice(0, 500)}` },
         { status: 502 }
@@ -133,6 +177,7 @@ Rules:
       meta: {
         receivedImageBytesApprox: Math.round(body.image.length * 0.75),
         model: payload.model,
+        rateLimitRemainingToday: rl.remaining,
       },
     });
   } catch (e: any) {

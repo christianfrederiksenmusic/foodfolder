@@ -3,7 +3,11 @@
 import { useState } from "react";
 
 type Item = { name: string; confidence: number };
-type Meta = { receivedImageBytesApprox?: number };
+type Meta = {
+  receivedImageBytesApprox?: number;
+  model?: string;
+  rateLimitRemainingToday?: number;
+};
 type ApiResponse = { items: Item[]; meta?: Meta; error?: string };
 
 export default function Home() {
@@ -135,10 +139,19 @@ export default function Home() {
               ))}
             </div>
 
-            {meta?.receivedImageBytesApprox != null && (
-              <p style={{ fontSize: 14, opacity: 0.75 }}>
-                Modtog billede (ca.): {meta.receivedImageBytesApprox.toLocaleString()} bytes
-              </p>
+            {meta && (
+              <div style={{ fontSize: 14, opacity: 0.8 }}>
+                {meta.model && <div>Model: {meta.model}</div>}
+                {meta.receivedImageBytesApprox != null && (
+                  <div>
+                    Modtog billede (ca.):{" "}
+                    {meta.receivedImageBytesApprox.toLocaleString()} bytes
+                  </div>
+                )}
+                {meta.rateLimitRemainingToday != null && (
+                  <div>Rate limit tilbage i dag: {meta.rateLimitRemainingToday}</div>
+                )}
+              </div>
             )}
           </>
         )}
