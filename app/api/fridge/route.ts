@@ -1,5 +1,24 @@
 import { NextResponse } from "next/server";
 
+
+function extractJsonObject(raw: string): string {
+  const t = (raw ?? "").trim();
+
+  // 1) Strip ```json ... ``` / ``` ... ```
+  const fence = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const unfenced = fence ? fence[1].trim() : t;
+
+  // 2) If there's extra chatter, take the first {...} block (best effort)
+  const first = unfenced.indexOf("{");
+  const last = unfenced.lastIndexOf("}");
+  if (first !== -1 && last !== -1 && last > first) {
+    return unfenced.slice(first, last + 1).trim();
+  }
+
+  return unfenced;
+}
+
+
 type Body = {
   image?: string;
   imageBase64?: string;
@@ -221,7 +240,7 @@ const mode = "thorough";
       );
     }
 
-    const data = JSON.parse(raw) as any;
+    const data = JSON.parse(extractJsonObject(raw)) as any;
     const text = data?.content?.find((c: any) => c?.type === "text")?.text;
 
     if (!text || typeof text !== "string") {
