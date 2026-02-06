@@ -74,7 +74,6 @@ async function downscaleToJpegDataUrl(
 function extractItems(json: any): ApiItem[] {
   const cleanName = (x: any) => String(x ?? "").trim();
 
-  // Primary: items[]
   if (json && Array.isArray(json.items)) {
     return json.items
       .map((it: any) => ({
@@ -84,14 +83,12 @@ function extractItems(json: any): ApiItem[] {
       .filter((it: ApiItem) => it.name.length > 0);
   }
 
-  // Fallback: ingredients[]
   if (json && Array.isArray(json.ingredients)) {
     return json.ingredients
       .map((name: any) => ({ name: cleanName(name) }))
       .filter((it: ApiItem) => it.name.length > 0);
   }
 
-  // Fallback nested
   const nested = json?.data ?? json?.result ?? json?.output;
   if (nested) return extractItems(nested);
 
@@ -99,6 +96,8 @@ function extractItems(json: any): ApiItem[] {
 }
 
 export default function Page() {
+  const SHOW_RAW = process.env.NODE_ENV !== "production";
+
   const [pickedFileInfo, setPickedFileInfo] = useState<{
     name: string;
     type: string;
@@ -225,9 +224,6 @@ export default function Page() {
   const chosenIsOriginal = chosen.label === "Original";
   const chosenIsJpeg = chosen.label === "Komprimeret";
 
-  const ingredientsNames =
-    apiResult?.ok === true ? apiResult.items.map((x) => x.name) : [];
-
   return (
     <main
       style={{
@@ -265,13 +261,13 @@ export default function Page() {
 
         <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
           <div>
-            <strong>File input state:</strong>{" "}
+            <strong>File:</strong>{" "}
             {pickedFileInfo
               ? `${pickedFileInfo.name} · ${pickedFileInfo.type} · ${formatBytes(pickedFileInfo.size)}`
               : "(ingen valgt endnu)"}
           </div>
           <div style={{ marginTop: 4 }}>
-            <strong>Processing state:</strong> {busy ? "Behandler…" : "Idle"}
+            <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
           </div>
         </div>
 
@@ -400,37 +396,39 @@ export default function Page() {
             <div style={{ borderRadius: 10, padding: 12, background: "rgba(0, 128, 0, 0.08)" }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>Ingredienser</div>
 
-              {ingredientsNames.length ? (
-                <>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {apiResult.items.map((it, idx) => (
-                      <li key={idx}>
-                        {it.name}
-                        {typeof it.confidence === "number" ? (
-                          <span style={{ opacity: 0.75 }}> (conf: {it.confidence.toFixed(2)})</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </>
+              {apiResult.items.length ? (
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {apiResult.items.map((it, idx) => (
+                    <li key={idx}>
+                      {it.name}
+                      {typeof it.confidence === "number" ? (
+                        <span style={{ opacity: 0.75 }}> (conf: {it.confidence.toFixed(2)})</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <div style={{ opacity: 0.8 }}>Ingen items fundet i API-respons.</div>
               )}
 
-              <details style={{ marginTop: 12 }}>
-                <summary style={{ cursor: "pointer" }}>Rå API-respons</summary>
-                <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
+              {SHOW_RAW ? (
+                <details style={{ marginTop: 12 }}>
+                  <summary style={{ cursor: "pointer" }}>Rå API-respons (kun i dev)</summary>
+                  <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
 {JSON.stringify(apiResult.raw ?? {}, null, 2)}
-                </pre>
-              </details>
+                  </pre>
+                </details>
+              ) : null}
             </div>
           ) : apiResult?.ok === false ? (
             <div style={{ borderRadius: 10, padding: 12, background: "rgba(220, 20, 60, 0.10)" }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>Fejl</div>
               <div>{apiResult.error}</div>
-              <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
+              {SHOW_RAW ? (
+                <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
 {JSON.stringify(apiResult.raw ?? {}, null, 2)}
-              </pre>
+                </pre>
+              ) : null}
             </div>
           ) : null}
         </div>
