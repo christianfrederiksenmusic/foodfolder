@@ -441,7 +441,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
                   return (
                     <li key={idx}>
                       {it.name}
-                      {conf ? <span style={{ opacity: 0.75 }}> ({conf})</span> : null}
+                      {conf ? <span style={{ opacity: 0.75 }}> {SHOW_RAW ? `(${conf})` : ""}</span> : null}
                     </li>
                   );
                 })}
