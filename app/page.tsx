@@ -44,8 +44,7 @@ async function downscaleToJpegDataUrl(
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
     i.onload = () => resolve(i);
-    i.onerror = () =>
-      reject(new Error("Kunne ikke indlæse dataURL i <img> (image decode fejl)."));
+    i.onerror = () => reject(new Error("Kunne ikke indlæse dataURL i <img> (image decode fejl)."));
     i.src = dataUrl;
   });
 
@@ -83,6 +82,7 @@ function extractItems(json: any): ApiItem[] {
       .filter((it: ApiItem) => it.name.length > 0);
   }
 
+  // fallback hvis API en dag sender ingredients[]
   if (json && Array.isArray(json.ingredients)) {
     return json.ingredients
       .map((name: any) => ({ name: cleanName(name) }))
@@ -93,6 +93,13 @@ function extractItems(json: any): ApiItem[] {
   if (nested) return extractItems(nested);
 
   return [];
+}
+
+function fmtConfidence(c?: number): string | null {
+  if (typeof c !== "number") return null;
+  if (!Number.isFinite(c)) return null;
+  const clamped = Math.max(0, Math.min(1, c));
+  return `${Math.round(clamped * 100)}%`;
 }
 
 export default function Page() {
@@ -120,10 +127,7 @@ export default function Page() {
     () => (originalDataUrl ? dataUrlByteSize(originalDataUrl) : 0),
     [originalDataUrl]
   );
-  const jpegBytes = useMemo(
-    () => (jpegDataUrl ? dataUrlByteSize(jpegDataUrl) : 0),
-    [jpegDataUrl]
-  );
+  const jpegBytes = useMemo(() => (jpegDataUrl ? dataUrlByteSize(jpegDataUrl) : 0), [jpegDataUrl]);
 
   const chosen = useMemo(() => {
     if (!originalDataUrl && !jpegDataUrl) return { label: "Ingen", dataUrl: "" };
@@ -175,34 +179,17 @@ export default function Page() {
     setApiResult(null);
 
     if (!chosen.dataUrl) {
-      setError("Vælg et billede først (ingen payload valgt).");
+      setError("Vælg et billede først.");
       return;
     }
 
-    const comma = chosen.dataUrl.indexOf(",");
-    const rawBase64 = comma >= 0 ? chosen.dataUrl.slice(comma + 1) : chosen.dataUrl;
-
     setApiBusy(true);
     try {
-      const body = {
-        image: chosen.dataUrl,
-        imageBase64: chosen.dataUrl,
-        imageDataUrl: chosen.dataUrl,
-        base64: rawBase64,
-        meta: {
-          pickedVariant: chosen.label,
-          originalBytes,
-          jpegBytes,
-          maxDim: MAX_DIM,
-          jpegQuality: JPEG_QUALITY,
-          file: pickedFileInfo,
-        },
-      };
-
+      // API er nu robust, så vi sender kun én ting: image (dataURL)
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ image: chosen.dataUrl }),
       });
 
       const json = await res.json();
@@ -221,8 +208,14 @@ export default function Page() {
     }
   }
 
-  const chosenIsOriginal = chosen.label === "Original";
-  const chosenIsJpeg = chosen.label === "Komprimeret";
+  const sortedItems =
+    apiResult?.ok === true
+      ? [...apiResult.items].sort((a, b) => {
+          const ca = typeof a.confidence === "number" && Number.isFinite(a.confidence) ? a.confidence : -1;
+          const cb = typeof b.confidence === "number" && Number.isFinite(b.confidence) ? b.confidence : -1;
+          return cb - ca;
+        })
+      : [];
 
   return (
     <main
@@ -230,14 +223,13 @@ export default function Page() {
         maxWidth: 920,
         margin: "40px auto",
         padding: "0 16px",
-        fontFamily:
-          "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
       }}
     >
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Foodfolder - Fridge Scan</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Qartigo - Fridge Scan</h1>
       <p style={{ marginTop: 0, opacity: 0.8 }}>
-        Upload et billede. UI vælger automatisk den mindste payload (Original dataURL vs downscaled
-        JPEG) og sender kun den mindste til API’et.
+        Upload et billede. Appen vælger automatisk den mindste payload (Original dataURL vs downscaled JPEG)
+        og sender kun den mindste til API’et.
       </p>
 
       <section
@@ -266,87 +258,24 @@ export default function Page() {
               ? `${pickedFileInfo.name} · ${pickedFileInfo.type} · ${formatBytes(pickedFileInfo.size)}`
               : "(ingen valgt endnu)"}
           </div>
-          <div style={{ marginTop: 4 }}>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Original:</strong> {originalDataUrl ? formatBytes(originalBytes) : "-"}
+            {" · "}
+            <strong>Komprimeret:</strong> {jpegDataUrl ? formatBytes(jpegBytes) : "-"}
+            {jpegDims ? <span style={{ opacity: 0.75 }}> (ca. {jpegDims.w}x{jpegDims.h})</span> : null}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Sendt til API:</strong> {chosen.label}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
             <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
           </div>
         </div>
 
         {error ? <div style={{ marginTop: 10, color: "crimson" }}>{error}</div> : null}
-      </section>
-
-      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
-        <div style={{ border: "1px solid rgba(0,0,0,0.12)", borderRadius: 12, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <h2 style={{ fontSize: 18, margin: 0 }}>Original</h2>
-            <div style={{ opacity: 0.75 }}>{originalDataUrl ? formatBytes(originalBytes) : "-"}</div>
-          </div>
-
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-            {originalDataUrl ? (chosenIsOriginal ? "(valgt)" : "(ikke valgt)") : "(ingen)"}
-          </div>
-
-          <div
-            style={{
-              marginTop: 12,
-              borderRadius: 10,
-              overflow: "hidden",
-              background: "rgba(0,0,0,0.03)",
-              minHeight: 220,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {originalDataUrl ? (
-              <img
-                src={originalDataUrl}
-                alt="Original preview"
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-            ) : (
-              <div style={{ opacity: 0.6 }}>Ingen preview</div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ border: "1px solid rgba(0,0,0,0.12)", borderRadius: 12, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <h2 style={{ fontSize: 18, margin: 0 }}>Komprimeret (downscaled JPEG)</h2>
-            <div style={{ opacity: 0.75 }}>{jpegDataUrl ? formatBytes(jpegBytes) : "-"}</div>
-          </div>
-
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.75 }}>
-            {jpegDataUrl ? (chosenIsJpeg ? "(valgt)" : "(ikke valgt)") : "(ingen)"}
-            {jpegDims ? (
-              <span style={{ marginLeft: 8 }}>
-                (ca. {jpegDims.w}x{jpegDims.h})
-              </span>
-            ) : null}
-          </div>
-
-          <div
-            style={{
-              marginTop: 12,
-              borderRadius: 10,
-              overflow: "hidden",
-              background: "rgba(0,0,0,0.03)",
-              minHeight: 220,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {jpegDataUrl ? (
-              <img
-                src={jpegDataUrl}
-                alt="JPEG preview"
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-            ) : (
-              <div style={{ opacity: 0.6 }}>Ingen preview</div>
-            )}
-          </div>
-        </div>
       </section>
 
       <section
@@ -357,21 +286,9 @@ export default function Page() {
           marginTop: 16,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 700 }}>Sendt til API: {chosen.label}</div>
-            <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>
-              Original: {originalDataUrl ? formatBytes(originalBytes) : "-"} · Komprimeret:{" "}
-              {jpegDataUrl ? formatBytes(jpegBytes) : "-"}
-            </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ fontWeight: 700 }}>
+            Preview (det billede der sendes)
           </div>
 
           <button
@@ -387,56 +304,88 @@ export default function Page() {
               fontWeight: 700,
             }}
           >
-            {apiBusy ? "Kalder API…" : "Analyser billede"}
+            {apiBusy ? "Analyserer…" : "Analyser billede"}
           </button>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          {apiResult?.ok === true ? (
-            <div style={{ borderRadius: 10, padding: 12, background: "rgba(0, 128, 0, 0.08)" }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Ingredienser</div>
-
-              {apiResult.items.length ? (
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {apiResult.items.map((it, idx) => (
-                    <li key={idx}>
-                      {it.name}
-                      {typeof it.confidence === "number" ? (
-                        <span style={{ opacity: 0.75 }}> (conf: {it.confidence.toFixed(2)})</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div style={{ opacity: 0.8 }}>Ingen items fundet i API-respons.</div>
-              )}
-
-              {SHOW_RAW ? (
-                <details style={{ marginTop: 12 }}>
-                  <summary style={{ cursor: "pointer" }}>Rå API-respons (kun i dev)</summary>
-                  <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
-{JSON.stringify(apiResult.raw ?? {}, null, 2)}
-                  </pre>
-                </details>
-              ) : null}
-            </div>
-          ) : apiResult?.ok === false ? (
-            <div style={{ borderRadius: 10, padding: 12, background: "rgba(220, 20, 60, 0.10)" }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Fejl</div>
-              <div>{apiResult.error}</div>
-              {SHOW_RAW ? (
-                <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
-{JSON.stringify(apiResult.raw ?? {}, null, 2)}
-                </pre>
-              ) : null}
-            </div>
-          ) : null}
+        <div
+          style={{
+            marginTop: 12,
+            borderRadius: 10,
+            overflow: "hidden",
+            background: "rgba(0,0,0,0.03)",
+            minHeight: 280,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {chosen.dataUrl ? (
+            <img
+              src={chosen.dataUrl}
+              alt="Chosen preview"
+              style={{ width: "100%", height: "auto", display: "block" }}
+            />
+          ) : (
+            <div style={{ opacity: 0.6 }}>Ingen preview</div>
+          )}
         </div>
       </section>
 
+      <section
+        style={{
+          border: "1px solid rgba(0,0,0,0.12)",
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        {apiResult?.ok === true ? (
+          <div style={{ borderRadius: 10, padding: 12, background: "rgba(0, 128, 0, 0.08)" }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Ingredienser</div>
+
+            {sortedItems.length ? (
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {sortedItems.map((it, idx) => {
+                  const conf = fmtConfidence(it.confidence);
+                  return (
+                    <li key={idx}>
+                      {it.name}
+                      {conf ? <span style={{ opacity: 0.75 }}> ({conf})</span> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div style={{ opacity: 0.8 }}>Ingen ingredienser fundet.</div>
+            )}
+
+            {SHOW_RAW ? (
+              <details style={{ marginTop: 12 }}>
+                <summary style={{ cursor: "pointer" }}>Rå API-respons (kun i dev)</summary>
+                <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
+{JSON.stringify(apiResult.raw ?? {}, null, 2)}
+                </pre>
+              </details>
+            ) : null}
+          </div>
+        ) : apiResult?.ok === false ? (
+          <div style={{ borderRadius: 10, padding: 12, background: "rgba(220, 20, 60, 0.10)" }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Fejl</div>
+            <div>{apiResult.error}</div>
+            {SHOW_RAW ? (
+              <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
+{JSON.stringify(apiResult.raw ?? {}, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        ) : (
+          <div style={{ opacity: 0.75 }}>Ingen analyse endnu.</div>
+        )}
+      </section>
+
       <div style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
-        Note: Hvis originalen er en lille WEBP, kan JPEG-varianten blive større. Derfor vælges altid den mindste payload
-        automatisk.
+        Note: Hvis originalen er en lille WEBP, kan JPEG-varianten blive større. Derfor vælges altid den mindste payload automatisk.
       </div>
     </main>
   );
