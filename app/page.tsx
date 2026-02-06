@@ -382,9 +382,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         </div>
           <button
             type="button"
-            className="q-btn q-btn-secondary"
-            onClick={() => setMode("conservative")}
-            disabled={busy || apiBusy}
+            className="q-btn q-btn-secondary" disabled={busy || apiBusy}
             style={{
               padding: "8px 12px",
               borderRadius: 999,
@@ -399,9 +397,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
 
           <button
             type="button"
-            className="q-btn q-btn-secondary"
-            onClick={() => setMode("thorough")}
-            disabled={busy || apiBusy}
+            className="q-btn q-btn-secondary" disabled={busy || apiBusy}
             style={{
               padding: "8px 12px",
               borderRadius: 999,
