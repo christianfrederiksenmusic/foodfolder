@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 
-type Body = {
-  image?: string | null;
-  imageBase64?: string | null;   // may be a dataURL in our frontend
-  imageDataUrl?: string | null;  // may be a dataURL
-  base64?: string | null;        // raw base64 (no prefix)
-};
+type Body = { image?: string | null; mode?: "conservative" | "thorough" | null };
 
 // Simple safety-belt for v1. Note: In serverless, memory may reset between invocations.
 // Still useful to prevent rapid accidental spam during development.
@@ -132,7 +127,26 @@ export async function POST(req: Request) {
     base64 = candidate.replace(/\s+/g, "");
   }
 
-  const prompt = `
+  // prompt selected below (mode-aware)
+const promptConservative = `
+You are an expert at identifying food items from a fridge photo.
+
+Return ONLY strict JSON with this schema:
+{
+  "items": [
+    { "name": string, "confidence": number }
+  ]
+}
+
+Rules:
+- Use Danish names when possible.
+- Only include items that are clearly visible.
+- Avoid generic guesses like "olie", "eddike", "krydderier", "sauce", "syltetøj", "dressing" unless label is readable or packaging is unmistakable.
+- If unsure, include with LOW confidence rather than inventing.
+- Max 25 items.
+`.trim();
+
+  const promptThorough = `
 You are an expert at identifying food items from a fridge photo.
 
 Return ONLY strict JSON with this schema:
@@ -145,18 +159,17 @@ Return ONLY strict JSON with this schema:
 Rules:
 - Use Danish names when possible.
 - Be exhaustive: scan the whole image (top-left to bottom-right) and list all visible food/ingredients.
-- If you are unsure, still include the item with LOW confidence (don't omit everything).
-- confidence is 0.0 to 1.0 and should reflect visual evidence:
-  - 0.90+ only if label is readable OR packaging is unmistakable
-  - 0.70–0.89 if strongly likely from shape/packaging
-  - 0.40–0.69 if plausible but uncertain
+- If unsure, include the item with LOW confidence (do not omit everything).
 - Avoid generic guesses like "olie", "eddike", "krydderier", "sauce", "syltetøj", "dressing" unless label is readable or packaging is unmistakable.
 - Max 35 items.
 `.trim();
 
+  const mode = body.mode === "thorough" ? "thorough" : "conservative";
+  const prompt = mode === "thorough" ? promptThorough : promptConservative;
+
   const payload = {
-    model: "claude-3-haiku-20240307",
-    max_tokens: 700,
+    model: mode === "thorough" ? "claude-3-5-sonnet-20241022" : "claude-3-haiku-20240307",
+    max_tokens: mode === "thorough" ? 900 : 500,
     temperature: 0,
     messages: [
       {
@@ -236,6 +249,7 @@ Rules:
       meta: {
         receivedImageBytesApprox: Math.round(base64.length * 0.75),
         model: payload.model,
+        mode,
         rateLimitRemainingToday: rl.remaining,
       },
     });
