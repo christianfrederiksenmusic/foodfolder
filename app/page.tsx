@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
 type ApiItem = { name: string; confidence?: number };
 type ApiOk = { ok: true; items: ApiItem[]; raw: any };
@@ -105,7 +105,10 @@ function fmtConfidence(c?: number): string | null {
 export default function Page() {
   const SHOW_RAW = process.env.NODE_ENV !== "production";
 
-  const [pickedFileInfo, setPickedFileInfo] = useState<{
+  
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+const [pickedFileInfo, setPickedFileInfo] = useState<{
     name: string;
     type: string;
     size: number;
@@ -231,6 +234,9 @@ export default function Page() {
         .q-btn:hover:enabled { filter: brightness(1.06); box-shadow: 0 10px 26px rgba(0,0,0,0.18); transform: translateY(-1px); }
         .q-btn:active:enabled { filter: brightness(0.98); transform: translateY(0px) scale(0.99); }
         .q-btn:focus-visible { outline: 3px solid rgba(0,0,0,0.28); outline-offset: 2px; }
+        .q-btn-primary:hover:enabled { filter: brightness(1.06); }
+        .q-btn-secondary:hover:enabled { background: rgba(0,0,0,0.04); }
+        .q-btn-secondary:active:enabled { background: rgba(0,0,0,0.06); }
       `}</style>
       <h1 style={{ fontSize: 28, marginBottom: 8 }}>Qartigo - Fridge Scan</h1>
       <p style={{ marginTop: 0, opacity: 0.8 }}>
@@ -248,16 +254,62 @@ export default function Page() {
       >
         <label style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>Vælg billede</label>
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={onPickFile}
-          onClick={(ev) => {
-            (ev.currentTarget as HTMLInputElement).value = "";
-          }}
-        />
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPickFile}
+            style={{ position: "absolute", left: -99999, width: 1, height: 1, opacity: 0 }}
+          />
 
-        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
+          <button
+            type="button"
+            className="q-btn q-btn-primary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: busy ? "rgba(0,0,0,0.06)" : "black",
+              color: busy ? "rgba(0,0,0,0.5)" : "white",
+              cursor: busy ? "not-allowed" : "pointer",
+              fontWeight: 800,
+              letterSpacing: 0.2,
+            }}
+          >
+            {pickedFileInfo ? "Skift billede" : "Upload foto"}
+          </button>
+
+          {pickedFileInfo ? (
+            <button
+              type="button"
+              className="q-btn q-btn-secondary"
+              onClick={() => {
+                setPickedFileInfo(null);
+                setOriginalDataUrl("");
+                setJpegDataUrl("");
+                setJpegDims(null);
+                setApiResult(null);
+                setError("");
+              }}
+              disabled={busy || apiBusy}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: busy || apiBusy ? "rgba(0,0,0,0.06)" : "white",
+                color: "black",
+                cursor: busy || apiBusy ? "not-allowed" : "pointer",
+                fontWeight: 800,
+                letterSpacing: 0.2,
+              }}
+            >
+              Fjern
+            </button>
+          ) : null}
+        </div><div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
           <div>
             <strong>File:</strong>{" "}
             {pickedFileInfo
