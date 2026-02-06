@@ -95,20 +95,11 @@ function extractItems(json: any): ApiItem[] {
   return [];
 }
 
-function fmtConfidenceLabel(c?: number): string | null {
+function fmtConfidence(c?: number): string | null {
   if (typeof c !== "number") return null;
   if (!Number.isFinite(c)) return null;
-  const x = Math.max(0, Math.min(1, c));
-  if (x >= 0.85) return "høj";
-  if (x >= 0.65) return "middel";
-  return "lav";
-}
-
-function fmtConfidencePct(c?: number): string | null {
-  if (typeof c !== "number") return null;
-  if (!Number.isFinite(c)) return null;
-  const x = Math.max(0, Math.min(1, c));
-  return `${Math.round(x * 100)}%`;
+  const clamped = Math.max(0, Math.min(1, c));
+  return `${Math.round(clamped * 100)}%`;
 }
 
 export default function Page() {
@@ -253,7 +244,98 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         og sender kun den mindste til API’et.
       </p>
 
-      
+      <section
+        style={{
+          border: "1px solid rgba(0,0,0,0.12)",
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>Vælg billede</label>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPickFile}
+            style={{ position: "absolute", left: -99999, width: 1, height: 1, opacity: 0 }}
+          />
+
+          <button
+            type="button"
+            className="q-btn q-btn-primary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: busy ? "rgba(0,0,0,0.06)" : "black",
+              color: busy ? "rgba(0,0,0,0.5)" : "white",
+              cursor: busy ? "not-allowed" : "pointer",
+              fontWeight: 800,
+              letterSpacing: 0.2,
+            }}
+          >
+            {pickedFileInfo ? "Skift billede" : "Upload foto"}
+          </button>
+
+          {pickedFileInfo ? (
+            <button
+              type="button"
+              className="q-btn q-btn-secondary"
+              onClick={() => {
+                setPickedFileInfo(null);
+                setOriginalDataUrl("");
+                setJpegDataUrl("");
+                setJpegDims(null);
+                setApiResult(null);
+                setError("");
+              }}
+              disabled={busy || apiBusy}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: busy || apiBusy ? "rgba(0,0,0,0.06)" : "white",
+                color: "black",
+                cursor: busy || apiBusy ? "not-allowed" : "pointer",
+                fontWeight: 800,
+                letterSpacing: 0.2,
+              }}
+            >
+              Fjern
+            </button>
+          ) : null}
+        </div><div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
+          <div>
+            <strong>File:</strong>{" "}
+            {pickedFileInfo
+              ? `${pickedFileInfo.name} · ${pickedFileInfo.type} · ${formatBytes(pickedFileInfo.size)}`
+              : "(ingen valgt endnu)"}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Original:</strong> {originalDataUrl ? formatBytes(originalBytes) : "-"}
+            {" · "}
+            <strong>Komprimeret:</strong> {jpegDataUrl ? formatBytes(jpegBytes) : "-"}
+            {jpegDims ? <span style={{ opacity: 0.75 }}> (ca. {jpegDims.w}x{jpegDims.h})</span> : null}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Sendt til API:</strong> {chosen.label}
+          </div>
+
+          <div style={{ marginTop: 6 }}>
+            <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
+          </div>
+        </div>
+
+        {error ? <div style={{ marginTop: 10, color: "crimson" }}>{error}</div> : null}
+      </section>
+
       <section
         style={{
           border: "1px solid rgba(0,0,0,0.12)",
@@ -264,7 +346,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ fontWeight: 700 }}>
-            Preview + ingredienser
+            Preview (det billede der sendes)
           </div>
 
           <button className="q-btn"
@@ -272,13 +354,12 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
             disabled={apiBusy || busy || !chosen.dataUrl}
             style={{
               padding: "10px 14px",
-              borderRadius: 12,
+              borderRadius: 10,
               border: "1px solid rgba(0,0,0,0.18)",
               background: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.06)" : "black",
               color: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.5)" : "white",
               cursor: apiBusy || busy || !chosen.dataUrl ? "not-allowed" : "pointer",
-              fontWeight: 800,
-              letterSpacing: 0.2,
+              fontWeight: 700,
             }}
           >
             {apiBusy ? "Analyserer…" : "Analyser billede"}
@@ -286,16 +367,6 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         </div>
 
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 0.8fr",
-            gap: 16,
-            marginTop: 12,
-            alignItems: "start",
-          }}
-        >
-          <div>
-<div
           style={{
             marginTop: 12,
             borderRadius: 10,
@@ -320,70 +391,59 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
             <div style={{ opacity: 0.6 }}>Ingen preview</div>
           )}
         </div>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid rgba(0,0,0,0.12)",
-              borderRadius: 12,
-              padding: 12,
-              background: "rgba(0,0,0,0.02)",
-              minHeight: 280,
-            }}
-          >
-            {apiResult?.ok === true ? (
-              <div style={{ borderRadius: 10, padding: 12, background: "rgba(0, 128, 0, 0.08)" }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>Ingredienser</div>
-
-                {sortedItems.length ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {sortedItems.map((it, idx) => {
-                      const label = fmtConfidenceLabel(it.confidence);
-                      const pct = fmtConfidencePct(it.confidence);
-                      return (
-                        <li key={idx} style={{ marginBottom: 6 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                            <span>{it.name}</span>
-                            {label ? (
-                              <span style={{ opacity: 0.75 }}>
-                                {label}
-                                {SHOW_RAW && pct ? <span style={{ opacity: 0.75 }}> ({pct})</span> : null}
-                              </span>
-                            ) : null}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div style={{ opacity: 0.8 }}>Ingen ingredienser fundet.</div>
-                )}
-
-                <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-                  Note: “høj/middel/lav” er modellens interne sikkerhed - ikke en garanti.
-                </div>
-
-                {SHOW_RAW ? (
-                  <details style={{ marginTop: 12 }}>
-                    <summary style={{ cursor: "pointer" }}>Rå API-respons (kun i dev)</summary>
-                    <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
-{JSON.stringify(apiResult.raw ?? {}, null, 2)}
-                    </pre>
-                  </details>
-                ) : null}
-              </div>
-            ) : apiResult?.ok === false ? (
-              <div style={{ borderRadius: 10, padding: 12, background: "rgba(220, 20, 60, 0.10)" }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Fejl</div>
-                <div>{apiResult.error}</div>
-              </div>
-            ) : (
-              <div style={{ opacity: 0.75 }}>Ingen analyse endnu.</div>
-            )}
-          </div>
-        </div>
       </section>
 
+      <section
+        style={{
+          border: "1px solid rgba(0,0,0,0.12)",
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        {apiResult?.ok === true ? (
+          <div style={{ borderRadius: 10, padding: 12, background: "rgba(0, 128, 0, 0.08)" }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Ingredienser</div>
+
+            {sortedItems.length ? (
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {sortedItems.map((it, idx) => {
+                  const conf = fmtConfidence(it.confidence);
+                  return (
+                    <li key={idx}>
+                      {it.name}
+                      {conf ? <span style={{ opacity: 0.75 }}> ({conf})</span> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div style={{ opacity: 0.8 }}>Ingen ingredienser fundet.</div>
+            )}
+
+            {SHOW_RAW ? (
+              <details style={{ marginTop: 12 }}>
+                <summary style={{ cursor: "pointer" }}>Rå API-respons (kun i dev)</summary>
+                <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
+{JSON.stringify(apiResult.raw ?? {}, null, 2)}
+                </pre>
+              </details>
+            ) : null}
+          </div>
+        ) : apiResult?.ok === false ? (
+          <div style={{ borderRadius: 10, padding: 12, background: "rgba(220, 20, 60, 0.10)" }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Fejl</div>
+            <div>{apiResult.error}</div>
+            {SHOW_RAW ? (
+              <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
+{JSON.stringify(apiResult.raw ?? {}, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        ) : (
+          <div style={{ opacity: 0.75 }}>Ingen analyse endnu.</div>
+        )}
+      </section>
 
       <div style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
         Note: Hvis originalen er en lille WEBP, kan JPEG-varianten blive større. Derfor vælges altid den mindste payload automatisk.
