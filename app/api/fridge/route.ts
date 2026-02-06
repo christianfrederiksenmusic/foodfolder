@@ -142,21 +142,21 @@ Return ONLY strict JSON with this schema:
   ]
 }
 
-Hard rules (important):
+Rules:
 - Use Danish names when possible.
-- Only include items that are clearly visible in the photo.
-- Do NOT guess generic pantry items like "olie", "eddike", "krydderier", "sauce", "syltetøj" unless the label/text is clearly readable OR the packaging is unmistakable.
-- If you are not sure, omit the item rather than guessing.
-- confidence is 0.0 to 1.0, but use it conservatively:
-  - 0.90+ only if label is readable or the item is unmistakable
+- Be exhaustive: scan the whole image (top-left to bottom-right) and list all visible food/ingredients.
+- If you are unsure, still include the item with LOW confidence (don't omit everything).
+- confidence is 0.0 to 1.0 and should reflect visual evidence:
+  - 0.90+ only if label is readable OR packaging is unmistakable
   - 0.70–0.89 if strongly likely from shape/packaging
-  - below 0.70 only if still useful and clearly present
-- Max 25 items.
+  - 0.40–0.69 if plausible but uncertain
+- Avoid generic guesses like "olie", "eddike", "krydderier", "sauce", "syltetøj", "dressing" unless label is readable or packaging is unmistakable.
+- Max 35 items.
 `.trim();
 
   const payload = {
     model: "claude-3-haiku-20240307",
-    max_tokens: 400,
+    max_tokens: 700,
     temperature: 0,
     messages: [
       {
