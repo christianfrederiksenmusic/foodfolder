@@ -409,6 +409,23 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       </section>
           </div>
           <div>
+
+
+
+      <section
+        style={{
+          marginTop: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.2fr 0.8fr",
+            gap: 16,
+            alignItems: "start",
+          }}
+        >
+          <div>
 <section
         style={{
           border: "1px solid rgba(0,0,0,0.12)",
@@ -557,6 +574,10 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
           )}
         </div>
       </section>
+          </div>
+          <div>
+
+
 
       <section
         style={{
