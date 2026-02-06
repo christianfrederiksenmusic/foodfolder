@@ -121,6 +121,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   const [busy, setBusy] = useState(false);
   const [apiBusy, setApiBusy] = useState(false);
   const [apiResult, setApiResult] = useState<ApiResponse>(null);
+  const [mode, setMode] = useState<"conservative" | "thorough">("conservative");
   const [error, setError] = useState("");
 
   const MAX_DIM = 1280;
@@ -192,7 +193,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: chosen.dataUrl }),
+        body: JSON.stringify({ image: chosen.dataUrl, mode }),
       });
 
       const json = await res.json();
@@ -380,6 +381,48 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
             {apiBusy ? "Analyserer…" : "Analyser billede"}
           </button>
         </div>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 700 }}>Scan-mode:</div>
+
+          <button
+            type="button"
+            className="q-btn q-btn-secondary"
+            onClick={() => setMode("conservative")}
+            disabled={busy || apiBusy}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: mode === "conservative" ? "rgba(0,0,0,0.06)" : "white",
+              cursor: busy || apiBusy ? "not-allowed" : "pointer",
+              fontWeight: 800,
+            }}
+          >
+            Konservativ
+          </button>
+
+          <button
+            type="button"
+            className="q-btn q-btn-secondary"
+            onClick={() => setMode("thorough")}
+            disabled={busy || apiBusy}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: mode === "thorough" ? "rgba(0,0,0,0.06)" : "white",
+              cursor: busy || apiBusy ? "not-allowed" : "pointer",
+              fontWeight: 800,
+            }}
+          >
+            Grundig
+          </button>
+
+          <div style={{ fontSize: 12, opacity: 0.75 }}>
+            {mode === "thorough" ? "Finder flere ting (dyrere)." : "Færre gæt (billigere)."}
+          </div>
+        </div>
+
 
         <div
           style={{
