@@ -226,6 +226,12 @@ export default function Page() {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
       }}
     >
+      <style jsx global>{`
+        .q-btn { transition: transform 90ms ease, filter 140ms ease, box-shadow 140ms ease; }
+        .q-btn:hover:enabled { filter: brightness(1.06); box-shadow: 0 10px 26px rgba(0,0,0,0.18); transform: translateY(-1px); }
+        .q-btn:active:enabled { filter: brightness(0.98); transform: translateY(0px) scale(0.99); }
+        .q-btn:focus-visible { outline: 3px solid rgba(0,0,0,0.28); outline-offset: 2px; }
+      `}</style>
       <h1 style={{ fontSize: 28, marginBottom: 8 }}>Qartigo - Fridge Scan</h1>
       <p style={{ marginTop: 0, opacity: 0.8 }}>
         Upload et billede. Appen vælger automatisk den mindste payload (Original dataURL vs downscaled JPEG)
@@ -291,7 +297,7 @@ export default function Page() {
             Preview (det billede der sendes)
           </div>
 
-          <button
+          <button className="q-btn"
             onClick={callApi}
             disabled={apiBusy || busy || !chosen.dataUrl}
             style={{
@@ -314,7 +320,10 @@ export default function Page() {
             borderRadius: 10,
             overflow: "hidden",
             background: "rgba(0,0,0,0.03)",
-            minHeight: 280,
+            height: 420,
+            maxHeight: 420,
+            aspectRatio: "16 / 9",
+            padding: 12,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
