@@ -138,6 +138,39 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   const [apiResult, setApiResult] = useState<ApiResponse>(null);
   const [error, setError] = useState("");
 
+  // Global error catcher (Safari giver ellers kun "The string did not match the expected pattern.")
+  React.useEffect(() => {
+    const onError = (event: any) => {
+      try {
+        const msg = event?.message || String(event?.error?.message || event?.error || event);
+        const stack = event?.error?.stack ? "\n" + event.error.stack : "";
+        console.error("GLOBAL_ERROR:", msg, event?.error);
+        setError(`GLOBAL_ERROR: ${msg}${stack}`);
+      } catch (e) {
+        console.error("GLOBAL_ERROR (handler failed):", e);
+      }
+    };
+
+    const onRejection = (event: any) => {
+      try {
+        const err = event?.reason;
+        const msg = String(err?.message || err || event);
+        const stack = err?.stack ? "\n" + err.stack : "";
+        console.error("UNHANDLED_REJECTION:", msg, err);
+        setError(`UNHANDLED_REJECTION: ${msg}${stack}`);
+      } catch (e) {
+        console.error("UNHANDLED_REJECTION (handler failed):", e);
+      }
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
   const MAX_DIM = 1280;
   const JPEG_QUALITY = 0.82;
 
