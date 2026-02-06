@@ -1,5 +1,10 @@
 "use client";
 
+function sanitizeDataUrl(u: string): string {
+  return (u ?? "").trim().replace(/\s+/g, "");
+}
+
+
 function base64ByteLength(b64: string): number {
   const cleaned = (b64 ?? "").replace(/\s/g, "");
   if (!cleaned) return 0;
@@ -229,7 +234,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     setError("");
     setApiResult(null);
 
-    if (!chosen.dataUrl) {
+    if (!sanitizeDataUrl(chosen.dataUrl)) {
       setError("Vælg et billede først.");
       return;
     }
@@ -240,7 +245,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: chosen.dataUrl, mode: "thorough" }),
+        body: JSON.stringify({ image: sanitizeDataUrl(chosen.dataUrl), mode: "thorough" }),
       });
 
       const json = await res.json();
@@ -413,14 +418,14 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     <button
       className="q-btn"
       onClick={callApi}
-      disabled={apiBusy || busy || !chosen.dataUrl}
+      disabled={apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl)}
       style={{
         padding: "10px 14px",
         borderRadius: 10,
         border: "1px solid rgba(0,0,0,0.18)",
-        background: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.06)" : "black",
-        color: apiBusy || busy || !chosen.dataUrl ? "rgba(0,0,0,0.5)" : "white",
-        cursor: apiBusy || busy || !chosen.dataUrl ? "not-allowed" : "pointer",
+        background: apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl) ? "rgba(0,0,0,0.06)" : "black",
+        color: apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl) ? "rgba(0,0,0,0.5)" : "white",
+        cursor: apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl) ? "not-allowed" : "pointer",
         fontWeight: 700,
       }}
     >
@@ -469,9 +474,9 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         justifyContent: "center",
       }}
     >
-      {chosen.dataUrl ? (
+      {sanitizeDataUrl(chosen.dataUrl) ? (
         <img
-          src={chosen.dataUrl}
+          src={sanitizeDataUrl(chosen.dataUrl)}
           alt="Chosen preview"
           style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
         />
