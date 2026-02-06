@@ -320,9 +320,8 @@ export default function Page() {
             borderRadius: 10,
             overflow: "hidden",
             background: "rgba(0,0,0,0.03)",
-            height: 420,
-            maxHeight: 420,
-            aspectRatio: "16 / 9",
+            height: 320,
+            maxHeight: 320,
             padding: 12,
             display: "flex",
             alignItems: "center",
@@ -333,7 +332,7 @@ export default function Page() {
             <img
               src={chosen.dataUrl}
               alt="Chosen preview"
-              style={{ width: "100%", height: "auto", display: "block" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />
           ) : (
             <div style={{ opacity: 0.6 }}>Ingen preview</div>
