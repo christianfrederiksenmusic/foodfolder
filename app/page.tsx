@@ -380,35 +380,11 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
             {apiBusy ? "Analyserer…" : "Analyser billede"}
           </button>
         </div>
-          <button
-            type="button"
-            className="q-btn q-btn-secondary" disabled={busy || apiBusy}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(0,0,0,0.18)",
-              background: mode === "conservative" ? "rgba(0,0,0,0.06)" : "white",
-              cursor: busy || apiBusy ? "not-allowed" : "pointer",
-              fontWeight: 800,
-            }}
-          >
-            Konservativ
-          </button>
+          
 
-          <button
-            type="button"
-            className="q-btn q-btn-secondary" disabled={busy || apiBusy}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(0,0,0,0.18)",
-              background: mode === "thorough" ? "rgba(0,0,0,0.06)" : "white",
-              cursor: busy || apiBusy ? "not-allowed" : "pointer",
-              fontWeight: 800,
-            }}
-          >
-            Grundig
-          </button>
+
+          
+
 
           <div style={{ fontSize: 12, opacity: 0.75 }}>
             {mode === "thorough" ? "Finder flere ting (dyrere)." : "Færre gæt (billigere)."}
