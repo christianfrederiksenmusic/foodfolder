@@ -4,8 +4,8 @@ function safeToDataURL(canvas: HTMLCanvasElement, type: string, quality?: number
   try {
     // Safari/WebKit kan kaste DOMException: "The string did not match the expected pattern"
     // især ved visse encode-paths. Vi returnerer tom string og lader caller ignorere kandidaten.
-    return quality == null ? safeToDataURL(canvas, type) : safeToDataURL(canvas, type, quality);
-  } catch (e) {
+    return quality == null ? canvas.toDataURL(type) : canvas.toDataURL(type, quality);
+} catch (e) {
     console.error("safeToDataURL failed:", e);
     return "";
   }
