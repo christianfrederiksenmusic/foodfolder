@@ -450,7 +450,7 @@ export default function Page() {
               {t(lang, "brand")}
             </div>
             <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-900">
-              {t(lang, "title")}
+              Smart Shopping
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-600">
               {t(lang, "subtitle")}
