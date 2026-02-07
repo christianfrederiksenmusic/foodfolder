@@ -323,7 +323,7 @@ export default function Page() {
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: payload, mode: "thorough" }),
+        body: JSON.stringify({ image: payload, mode: "thorough", language: lang }),
       });
 
       const json = await res.json().catch(() => ({}));
