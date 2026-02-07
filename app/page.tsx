@@ -1,5 +1,39 @@
 "use client";
 
+const _B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  let out = "";
+  const len = bytes.length;
+  let i = 0;
+
+  for (; i + 2 < len; i += 3) {
+    const n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    out +=
+      _B64_CHARS[(n >>> 18) & 63] +
+      _B64_CHARS[(n >>> 12) & 63] +
+      _B64_CHARS[(n >>> 6) & 63] +
+      _B64_CHARS[n & 63];
+  }
+
+  if (i < len) {
+    const a = bytes[i];
+    const b = i + 1 < len ? bytes[i + 1] : 0;
+    const n = (a << 16) | (b << 8);
+
+    out += _B64_CHARS[(n >>> 18) & 63] + _B64_CHARS[(n >>> 12) & 63];
+
+    if (i + 1 < len) {
+      out += _B64_CHARS[(n >>> 6) & 63] + "=";
+    } else {
+      out += "==";
+    }
+  }
+
+  return out;
+}
+
+
 async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): Promise<string> {
   try {
     const blob: Blob = await new Promise((resolve, reject) => {
@@ -19,8 +53,8 @@ async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): P
       binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
     }
 
-    const b64 = btoa(binary);
-    return `data:image/jpeg;base64,${b64}`;
+    const b64 = uint8ToBase64(bytes);
+return `data:image/jpeg;base64,${b64}`;
   } catch (e) {
     console.error("canvasToJpegDataUrl failed:", e);
     return "";
@@ -116,8 +150,8 @@ async function fileToDataUrl(file: File): Promise<string> {
     for (let i = 0; i < bytes.length; i += chunk) {
       binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
     }
-    const b64 = btoa(binary);
-    const mime = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
+    const b64 = uint8ToBase64(bytes);
+const mime = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
     return `data:${mime};base64,${b64}`;
   })() as any;
 }
