@@ -100,28 +100,30 @@ function extractJsonObject(raw: string): string {
   return t0;
 }
 
-function normalizeItems(obj: any): Array<{ name: string; confidence?: number }> {
+function normalizeItems(obj: any): Array<{ name: string; kind?: string; contents?: string; confidence?: number }> {
   const clean = (x: any) => String(x ?? "").trim();
 
   const arr =
     Array.isArray(obj?.items)
       ? obj.items
       : Array.isArray(obj?.ingredients)
-        ? obj.ingredients.map((name: any) => ({ name }))
+        ? obj.ingredients.map((name: any) => ({ name, kind: "ingredient" }))
         : null;
 
   if (!arr) return [];
 
-  const out: Array<{ name: string; confidence?: number }> = [];
+  const out: Array<{ name: string; kind?: string; contents?: string; confidence?: number }> = [];
   for (const it of arr) {
     if (typeof it === "string") {
       const name = clean(it);
       if (name) out.push({ name });
     } else if (it && typeof it === "object") {
       const name = clean(it.name);
+      const kind = typeof it.kind === "string" ? clean(it.kind) : undefined;
+      const contents = typeof it.contents === "string" ? clean(it.contents) : undefined;
       const c =
         typeof it.confidence === "number" && Number.isFinite(it.confidence) ? it.confidence : undefined;
-      if (name) out.push({ name, confidence: c });
+      if (name) out.push({ name, kind, contents, confidence: c });
     }
   }
   return out;
@@ -149,10 +151,7 @@ export async function POST(req: Request) {
 
     const { mediaType, base64 } = parseDataUrl(candidate);
 
-    const prompt =
-      "Du ser et foto af et køleskab/ingredienser. Returnér KUN JSON iht. schemaet. " +
-      "Ingen forklaring, ingen markdown, ingen ekstra felter. " +
-      "items skal være faktiske, synlige ingredienser (ikke gæt som olie/eddike/krydderier, medmindre de tydeligt ses).";
+    const prompt = "Analysér hele scenen i billedet (ikke kun ingredienser). Returnér KUN JSON iht. schemaet. Inkludér både: (1) Ingredienser/madvarer, (2) Beholdere/emballage (gryde, boks, glas, flaske, bøtte, dåse, bakke, pose), og (3) hvis du kan se indholdet i en beholder, så angiv contents (fx \"glas\" + contents: \"syltetøj\"). Hvis indholdet ikke kan afgøres, skriv contents: \"ukendt\" og sæt lavere confidence. Ingen forklaring, ingen markdown, ingen ekstra tekst.";
 
     // Brug en moderne model (3.5 sonnet er retired)
     const model = "claude-sonnet-4-5";
@@ -169,6 +168,11 @@ export async function POST(req: Request) {
             additionalProperties: false,
             properties: {
               name: { type: "string" },
+              kind: {
+                type: "string",
+                enum: ["ingredient", "container", "package", "drink", "unknown"]
+              },
+              contents: { type: "string" },
               confidence: { type: "number" }
             },
             required: ["name"]
