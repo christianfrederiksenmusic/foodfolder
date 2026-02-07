@@ -1,81 +1,79 @@
 "use client";
 
-function debugDomError(err: any, label?: string): string {
-  try {
-    const name = err?.name ? String(err.name) : "Error";
-    const msg = err?.message ? String(err.message) : String(err);
-    const code = err?.code != null ? String(err.code) : "";
-    const stack = err?.stack ? String(err.stack) : "";
-    const own = err && (typeof err === "object" || typeof err === "function")
-      ? Object.getOwnPropertyNames(err).join(", ")
-      : "";
-    const proto = err && (typeof err === "object" || typeof err === "function")
-      ? Object.getOwnPropertyNames(Object.getPrototypeOf(err) || {}).slice(0, 30).join(", ")
-      : "";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-    const callsite = new Error("CALLSITE").stack || "";
-    return (
-      (label ? `[${label}] ` : "") +
-      `${name}: ${msg}` +
-      (code ? `\ncode: ${code}` : "") +
-      (own ? `\nownProps: ${own}` : "") +
-      (proto ? `\nprotoProps: ${proto}` : "") +
-      (stack ? `\n\nSTACK:\n${stack}` : "") +
-      (callsite ? `\n\nCALLSITE:\n${callsite}` : "")
-    );
-  } catch (e) {
-    return `debugDomError failed: ${String(e)}`;
-  }
+type ApiItem = { name: string; confidence?: number; kind?: string; contents?: string };
+type ApiOk = { ok: true; items: ApiItem[]; raw?: any };
+type ApiErr = { ok: false; error: string; raw?: any; detail?: any };
+type ApiResult = ApiOk | ApiErr;
+
+function stripWhitespace(s: string) {
+  return (s ?? "").trim().replace(/\s+/g, "");
 }
 
-
-const _B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-function uint8ToBase64(bytes: Uint8Array): string {
-  let out = "";
-  const len = bytes.length;
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "-";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = bytes;
   let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  const digits = i === 0 ? 0 : 2;
+  return `${v.toFixed(digits)} ${units[i]}`;
+}
 
-  for (; i + 2 < len; i += 3) {
+function dataUrlByteSize(dataUrl: string): number {
+  const t = (dataUrl ?? "").trim();
+  const comma = t.indexOf(",");
+  if (comma === -1) return 0;
+  const b64 = t.slice(comma + 1);
+  // approx bytes = 3/4 * len - padding
+  const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.floor((3 * b64.length) / 4) - pad;
+}
+
+function base64FromBytes(bytes: Uint8Array): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let out = "";
+  let i = 0;
+  for (; i + 2 < bytes.length; i += 3) {
     const n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
     out +=
-      _B64_CHARS[(n >>> 18) & 63] +
-      _B64_CHARS[(n >>> 12) & 63] +
-      _B64_CHARS[(n >>> 6) & 63] +
-      _B64_CHARS[n & 63];
+      alphabet[(n >>> 18) & 63] +
+      alphabet[(n >>> 12) & 63] +
+      alphabet[(n >>> 6) & 63] +
+      alphabet[n & 63];
   }
-
-  if (i < len) {
-    const a = bytes[i];
-    const b = i + 1 < len ? bytes[i + 1] : 0;
-    const n = (a << 16) | (b << 8);
-
-    out += _B64_CHARS[(n >>> 18) & 63] + _B64_CHARS[(n >>> 12) & 63];
-
-    if (i + 1 < len) {
-      out += _B64_CHARS[(n >>> 6) & 63] + "=";
-    } else {
-      out += "==";
-    }
+  if (i < bytes.length) {
+    const n = (bytes[i] << 16) | ((i + 1 < bytes.length ? bytes[i + 1] : 0) << 8);
+    out += alphabet[(n >>> 18) & 63] + alphabet[(n >>> 12) & 63];
+    out += i + 1 < bytes.length ? alphabet[(n >>> 6) & 63] + "=" : "==";
   }
-
   return out;
 }
 
+async function fileToDataUrl(file: File): Promise<string> {
+  // Safari-stabil: ingen FileReader.readAsDataURL; vi bygger selv dataURL fra bytes
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const b64 = base64FromBytes(bytes);
+  const type = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
+  return `data:${type};base64,${b64}`;
+}
 
 async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): Promise<string> {
   try {
-    const blob: Blob = await new Promise((resolve, reject) => {
+    const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (b) => (b ? resolve(b) : reject(new Error("canvas.toBlob returned null"))),
         "image/jpeg",
         quality
       );
     });
-
     const buf = await blob.arrayBuffer();
-    const bytes = new Uint8Array(buf);
-    const b64 = uint8ToBase64(bytes);
+    const b64 = base64FromBytes(new Uint8Array(buf));
     return `data:image/jpeg;base64,${b64}`;
   } catch (e) {
     console.error("canvasToJpegDataUrl failed:", e);
@@ -83,18 +81,55 @@ async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): P
   }
 }
 
+async function downscaleToJpegDataUrl(file: File, opts: { maxDim: number; quality: number }) {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    const url = URL.createObjectURL(file);
 
-function safeToDataURL(canvas: HTMLCanvasElement, type: string, quality?: number): string {
-  try {
-    // Safari/WebKit kan kaste DOMException: "The string did not match the expected pattern"
-    // især ved visse encode-paths. Vi returnerer tom string og lader caller ignorere kandidaten.
-    return quality == null ? canvas.toDataURL(type) : canvas.toDataURL(type, quality);
-} catch (e) {
-    console.error("safeToDataURL failed:", e);
-    return "";
-  }
+    el.onload = () => {
+      try { URL.revokeObjectURL(url); } catch {}
+      resolve(el);
+    };
+
+    el.onerror = () => {
+      try { URL.revokeObjectURL(url); } catch {}
+      reject(new Error("Kunne ikke indlæse fil i <img> via objectURL (image decode fejl)."));
+    };
+
+    try {
+      el.src = url;
+    } catch (e) {
+      try { URL.revokeObjectURL(url); } catch {}
+      reject(e);
+    }
+  });
+
+  const w0 = img.naturalWidth || img.width;
+  const h0 = img.naturalHeight || img.height;
+
+  const scale = Math.min(1, opts.maxDim / Math.max(w0, h0));
+  const w = Math.max(1, Math.round(w0 * scale));
+  const h = Math.max(1, Math.round(h0 * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context fejlede.");
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const jpegDataUrl = await canvasToJpegDataUrl(canvas, opts.quality);
+  return { jpegDataUrl, width: w, height: h };
 }
 
+function fmtConfidence(c?: number) {
+  if (typeof c !== "number" || !Number.isFinite(c)) return "";
+  return `${Math.round(c * 100)}%`;
+}
 
 function formatErr(e: any): string {
   try {
@@ -103,235 +138,47 @@ function formatErr(e: any): string {
     const msg = e?.message ? String(e.message) : String(e);
     const code = e?.code != null ? `\ncode: ${String(e.code)}` : "";
     const stack = e?.stack ? `\n${String(e.stack)}` : "";
-    const extra =
-      !stack && e && typeof e === "object"
-        ? `\nkeys: ${Object.keys(e).join(", ")}`
-        : "";
-    return `${name}: ${msg}${code}${stack}${extra}`;
-  } catch (x: any) {
-    return `Error: ${String(e)}`;
+    const keys =
+      !stack && e && typeof e === "object" ? `\nkeys: ${Object.keys(e).join(", ")}` : "";
+    return `${name}: ${msg}${code}${stack}${keys}`;
+  } catch {
+    return String(e);
   }
-}
-
-
-function sanitizeDataUrl(u: string): string {
-  return (u ?? "").trim().replace(/\s+/g, "");
-}
-
-
-function base64ByteLength(b64: string): number {
-  const cleaned = (b64 ?? "").replace(/\s/g, "");
-  if (!cleaned) return 0;
-  const pad = cleaned.endsWith("==") ? 2 : cleaned.endsWith("=") ? 1 : 0;
-  return Math.max(0, Math.floor((cleaned.length * 3) / 4) - pad);
-}
-
-function dataUrlByteLength(dataUrl: string): number {
-  const t = (dataUrl ?? "").trim();
-  const comma = t.indexOf(",");
-  if (comma === -1) return 0;
-  return base64ByteLength(t.slice(comma + 1));
-}
-
-
-import React, { useMemo, useRef, useState } from "react";
-
-type ApiItem = { name: string; confidence?: number };
-type ApiOk = { ok: true; items: ApiItem[]; raw: any };
-type ApiErr = { ok: false; error: string; raw: any };
-type ApiResponse = ApiOk | ApiErr | null;
-
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return "-";
-  const units = ["B", "KB", "MB", "GB"];
-  let b = bytes;
-  let i = 0;
-  while (b >= 1024 && i < units.length - 1) {
-    b /= 1024;
-    i++;
-  }
-  return `${b.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
-}
-
-function dataUrlByteSize(dataUrl: string): number {
-  const comma = dataUrl.indexOf(",");
-  if (comma === -1) return 0;
-  const base64 = dataUrl.slice(comma + 1);
-  const len = base64.length;
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
-  return Math.floor((len * 3) / 4) - padding;
-}
-
-async function fileToDataUrl(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  const b64 = uint8ToBase64(bytes);
-  const mime = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
-  return `data:${mime};base64,${b64}`;
-}
-
-async function downscaleFileToJpegDataUrl(
-  file: File,
-  opts: { maxDim: number; quality: number }
-): Promise<{ jpegDataUrl: string; width: number; height: number }> {
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    const url = URL.createObjectURL(file);
-
-    i.onload = () => {
-      try { URL.revokeObjectURL(url); } catch {}
-      resolve(i);
-    };
-    i.onerror = () => {
-      try { URL.revokeObjectURL(url); } catch {}
-      reject(new Error("Kunne ikke indlæse fil i <img> via objectURL (image decode fejl)."));
-    };
-
-    try {
-      i.src = url;
-    } catch (e: any) {
-      try { URL.revokeObjectURL(url); } catch {}
-      reject(e);
-    }
-  });
-
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-
-  const scale = Math.min(1, opts.maxDim / Math.max(w, h));
-  const targetW = Math.max(1, Math.round(w * scale));
-  const targetH = Math.max(1, Math.round(h * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas context fejlede.");
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, targetW, targetH);
-
-  const jpegDataUrl = await canvasToJpegDataUrl(canvas, opts.quality);
-  return { jpegDataUrl, width: targetW, height: targetH };
-}
-
-
-async function downscaleToJpegDataUrl(
-  dataUrl: string,
-  opts: { maxDim: number; quality: number }
-): Promise<{ jpegDataUrl: string; width: number; height: number }> {
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = () => reject(new Error("Kunne ikke indlæse dataURL i <img> (image decode fejl)."));
-    try { i.src = dataUrl; } catch (err) { throw new Error(debugDomError(err, "img.src=dataUrl")); }
-});
-
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-
-  const scale = Math.min(1, opts.maxDim / Math.max(w, h));
-  const targetW = Math.max(1, Math.round(w * scale));
-  const targetH = Math.max(1, Math.round(h * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas context fejlede.");
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, targetW, targetH);
-
-  const jpegDataUrl = await canvasToJpegDataUrl(canvas, opts.quality);
-
-  return { jpegDataUrl, width: targetW, height: targetH };
-}
-
-function extractItems(json: any): ApiItem[] {
-  const cleanName = (x: any) => String(x ?? "").trim();
-
-  if (json && Array.isArray(json.items)) {
-    return json.items
-      .map((it: any) => ({
-        name: cleanName(it?.name),
-        confidence: typeof it?.confidence === "number" ? it.confidence : undefined,
-      }))
-      .filter((it: ApiItem) => it.name.length > 0);
-  }
-
-  // fallback hvis API en dag sender ingredients[]
-  if (json && Array.isArray(json.ingredients)) {
-    return json.ingredients
-      .map((name: any) => ({ name: cleanName(name) }))
-      .filter((it: ApiItem) => it.name.length > 0);
-  }
-
-  const nested = json?.data ?? json?.result ?? json?.output;
-  if (nested) return extractItems(nested);
-
-  return [];
-}
-
-function fmtConfidence(c?: number): string | null {
-  if (typeof c !== "number") return null;
-  if (!Number.isFinite(c)) return null;
-  const clamped = Math.max(0, Math.min(1, c));
-  return `${Math.round(clamped * 100)}%`;
 }
 
 export default function Page() {
-  const SHOW_RAW = process.env.NODE_ENV !== "production";
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
-  
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-const [pickedFileInfo, setPickedFileInfo] = useState<{
-    name: string;
-    type: string;
-    size: number;
-  } | null>(null);
-
+  const [pickedInfo, setPickedInfo] = useState<{ name: string; type: string; size: number } | null>(null);
   const [originalDataUrl, setOriginalDataUrl] = useState("");
   const [jpegDataUrl, setJpegDataUrl] = useState("");
   const [jpegDims, setJpegDims] = useState<{ w: number; h: number } | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [apiBusy, setApiBusy] = useState(false);
-  const [apiResult, setApiResult] = useState<ApiResponse>(null);
+  const [apiResult, setApiResult] = useState<ApiResult | null>(null);
   const [error, setError] = useState("");
 
-  function debugSetError(label: string, err: any) {
-    const callsite = new Error("CALLSITE").stack || "";
-    const msg = `[${label}] ` + formatErr(err) + (callsite ? "\n\n" + callsite : "");
-    console.error("DEBUG_ERROR:", msg, err);
-    setError(debugDomError(new Error(msg), "setError-msg"));
-  }
-
   // Global error catcher (Safari giver ellers kun "The string did not match the expected pattern.")
-  React.useEffect(() => {
-    const onError = (event: any) => {
+  useEffect(() => {
+    const onError = (ev: any) => {
       try {
-        const loc = event?.filename ? ` @ ${event.filename}:${event.lineno ?? "?"}:${event.colno ?? "?"}` : "";
-        const msg = (event?.message || String(event?.error?.message || event?.error || event)) + loc;
-        const stack = event?.error?.stack ? "\n" + event.error.stack : "";
-        console.error("GLOBAL_ERROR:", msg, event?.error);
+        const loc = ev?.filename ? ` @ ${ev.filename}:${ev.lineno ?? "?"}:${ev.colno ?? "?"}` : "";
+        const msg = (ev?.message || String(ev?.error?.message || ev?.error || ev)) + loc;
+        const stack = ev?.error?.stack ? "\n" + ev.error.stack : "";
+        console.error("GLOBAL_ERROR:", msg, ev?.error);
         setError(`GLOBAL_ERROR: ${msg}${stack}`);
       } catch (e) {
         console.error("GLOBAL_ERROR (handler failed):", e);
       }
     };
 
-    const onRejection = (event: any) => {
+    const onRejection = (ev: any) => {
       try {
-        const err = event?.reason;
-        const msg = String(err?.message || err || event);
-        const stack = err?.stack ? "\n" + err.stack : "";
-        console.error("UNHANDLED_REJECTION:", msg, err);
+        const reason = ev?.reason;
+        const msg = String(reason?.message || reason || ev);
+        const stack = reason?.stack ? "\n" + reason.stack : "";
+        console.error("UNHANDLED_REJECTION:", msg, reason);
         setError(`UNHANDLED_REJECTION: ${msg}${stack}`);
       } catch (e) {
         console.error("UNHANDLED_REJECTION (handler failed):", e);
@@ -349,10 +196,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   const MAX_DIM = 1280;
   const JPEG_QUALITY = 0.82;
 
-  const originalBytes = useMemo(
-    () => (originalDataUrl ? dataUrlByteSize(originalDataUrl) : 0),
-    [originalDataUrl]
-  );
+  const originalBytes = useMemo(() => (originalDataUrl ? dataUrlByteSize(originalDataUrl) : 0), [originalDataUrl]);
   const jpegBytes = useMemo(() => (jpegDataUrl ? dataUrlByteSize(jpegDataUrl) : 0), [jpegDataUrl]);
 
   const chosen = useMemo(() => {
@@ -369,36 +213,33 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
 
     const file = e.target.files?.[0];
     if (!file) {
-      setPickedFileInfo(null);
+      setPickedInfo(null);
       setOriginalDataUrl("");
       setJpegDataUrl("");
       setJpegDims(null);
       return;
     }
 
-    setPickedFileInfo({ name: file.name, type: file.type || "(ukendt)", size: file.size });
+    setPickedInfo({ name: file.name, type: file.type || "(ukendt)", size: file.size });
 
     setBusy(true);
     try {
       const orig = await fileToDataUrl(file);
       setOriginalDataUrl(orig);
+
       try {
-
-            const { jpegDataUrl: jpg, width, height } = await downscaleFileToJpegDataUrl(file, {
-              maxDim: MAX_DIM,
-              quality: JPEG_QUALITY,
-            });
-
-            setJpegDataUrl(jpg);
-            setJpegDims({ w: width, h: height });
-      } catch (e) {
-        // Safari kan fejle på WEBP decode/preview/downscale. Fortsæt med original i stedet.
-        console.warn('Downscale/preview failed; using originalDataUrl:', e);
-        setJpegDataUrl('');
+        const { jpegDataUrl: jpg, width, height } = await downscaleToJpegDataUrl(file, {
+          maxDim: MAX_DIM,
+          quality: JPEG_QUALITY,
+        });
+        setJpegDataUrl(jpg);
+        setJpegDims({ w: width, h: height });
+      } catch (err) {
+        console.warn("Downscale/preview failed; using originalDataUrl:", err);
+        setJpegDataUrl("");
         setJpegDims(null);
       }
-
-    } catch (err: any) {
+    } catch (err) {
       setError(formatErr(err));
       setOriginalDataUrl("");
       setJpegDataUrl("");
@@ -412,29 +253,36 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     setError("");
     setApiResult(null);
 
-    if (!sanitizeDataUrl(chosen.dataUrl)) {
+    const payload = stripWhitespace(chosen.dataUrl);
+    if (!payload) {
       setError("Vælg et billede først.");
       return;
     }
 
     setApiBusy(true);
     try {
-      // API er nu robust, så vi sender kun én ting: image (dataURL)
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: sanitizeDataUrl(chosen.dataUrl), mode: "thorough" }),
+        body: JSON.stringify({ image: payload, mode: "thorough" }),
       });
 
-      const json = await res.json();
-
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setApiResult({ ok: false, error: json?.error ?? `HTTP ${res.status}`, raw: json });
         return;
       }
 
-      const items = extractItems(json);
-      setApiResult({ ok: true, items, raw: json });
+      const items: ApiItem[] = Array.isArray(json?.items)
+        ? json.items.map((it: any) => ({
+            name: String(it?.name ?? "").trim(),
+            confidence: typeof it?.confidence === "number" ? it.confidence : undefined,
+            kind: typeof it?.kind === "string" ? it.kind : undefined,
+            contents: typeof it?.contents === "string" ? it.contents : undefined,
+          })).filter((it: ApiItem) => it.name.length > 0)
+        : [];
+
+      setApiResult({ ok: true, items, raw: json?.raw ?? json });
     } catch (err: any) {
       setApiResult({ ok: false, error: err?.message ?? "Netværksfejl.", raw: null });
     } finally {
@@ -442,306 +290,311 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     }
   }
 
-  const sortedItems =
-    apiResult?.ok === true
-      ? [...apiResult.items].sort((a, b) => {
-          const ca = typeof a.confidence === "number" && Number.isFinite(a.confidence) ? a.confidence : -1;
-          const cb = typeof b.confidence === "number" && Number.isFinite(b.confidence) ? b.confidence : -1;
-          return cb - ca;
-        })
-      : [];
+  const sortedItems = useMemo(() => {
+    if (!apiResult || apiResult.ok !== true) return [];
+    const copy = [...apiResult.items];
+    copy.sort((a, b) => {
+      const ac = typeof a.confidence === "number" && Number.isFinite(a.confidence) ? a.confidence : -1;
+      const bc = typeof b.confidence === "number" && Number.isFinite(b.confidence) ? b.confidence : -1;
+      return bc - ac;
+    });
+    return copy;
+  }, [apiResult]);
 
   return (
-    <main
-      style={{
-        maxWidth: 920,
-        margin: "40px auto",
-        padding: "0 16px",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-      }}
-    >
-      <style jsx global>{`
-        .q-btn { transition: transform 90ms ease, filter 140ms ease, box-shadow 140ms ease; }
-        .q-btn:hover:enabled { filter: brightness(1.06); box-shadow: 0 10px 26px rgba(0,0,0,0.18); transform: translateY(-1px); }
-        .q-btn:active:enabled { filter: brightness(0.98); transform: translateY(0px) scale(0.99); }
-        .q-btn:focus-visible { outline: 3px solid rgba(0,0,0,0.28); outline-offset: 2px; }
-        .q-btn-primary:hover:enabled { filter: brightness(1.06); }
-        .q-btn-secondary:hover:enabled { background: rgba(0,0,0,0.04); }
-        .q-btn-secondary:active:enabled { background: rgba(0,0,0,0.06); }
-      `}</style>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Qartigo - Fridge Scan</h1>
-      <p style={{ marginTop: 0, opacity: 0.8 }}>
-        Upload et billede. Appen vælger automatisk den mindste payload (Original dataURL vs downscaled JPEG)
-        og sender kun den mindste til API’et.
-      </p>
+    <main className="wrap">
+      <style>{css}</style>
 
-      
-      <section
-        style={{
-          marginTop: 16,
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 0.8fr",
-            gap: 16,
-            alignItems: "start",
-          }}
-        >
-          <div>
-<section
-        style={{
-          border: "1px solid rgba(0,0,0,0.12)",
-          borderRadius: 12,
-          padding: 16,
-          marginTop: 16,
-        }}
-      >
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>Vælg billede</label>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={async (e) => {
-  try {
-    const r = onPickFile(e);
-    if (r && typeof (r as any).then === "function") await r;
-  } catch (err) {
-    debugSetError("onChange:onPickFile", err);
-  }
-}}
-            style={{ position: "absolute", left: -99999, width: 1, height: 1, opacity: 0 }}
-          />
-
-          <button
-            type="button"
-            className="q-btn q-btn-primary"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={busy}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.18)",
-              background: busy ? "rgba(0,0,0,0.06)" : "black",
-              color: busy ? "rgba(0,0,0,0.5)" : "white",
-              cursor: busy ? "not-allowed" : "pointer",
-              fontWeight: 800,
-              letterSpacing: 0.2,
-            }}
-          >
-            {pickedFileInfo ? "Skift billede" : "Upload foto"}
-          </button>
-
-          {pickedFileInfo ? (
-            <button
-              type="button"
-              className="q-btn q-btn-secondary"
-              onClick={() => {
-                setPickedFileInfo(null);
-                setOriginalDataUrl("");
-                setJpegDataUrl("");
-                setJpegDims(null);
-                setApiResult(null);
-                setError("");
-              }}
-              disabled={busy || apiBusy}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 12,
-                border: "1px solid rgba(0,0,0,0.18)",
-                background: busy || apiBusy ? "rgba(0,0,0,0.06)" : "white",
-                color: "black",
-                cursor: busy || apiBusy ? "not-allowed" : "pointer",
-                fontWeight: 800,
-                letterSpacing: 0.2,
-              }}
-            >
-              Fjern
-            </button>
-          ) : null}
-        </div><div style={{ marginTop: 10, fontSize: 13, opacity: 0.85 }}>
-          <div>
-            <strong>File:</strong>{" "}
-            {pickedFileInfo
-              ? `${pickedFileInfo.name} · ${pickedFileInfo.type} · ${formatBytes(pickedFileInfo.size)}`
-              : "(ingen valgt endnu)"}
-          </div>
-
-          <div style={{ marginTop: 6 }}>
-            <strong>Original:</strong> {originalDataUrl ? formatBytes(originalBytes) : "-"}
-            {" · "}
-            <strong>Komprimeret:</strong> {jpegDataUrl ? formatBytes(jpegBytes) : "-"}
-            {jpegDims ? <span style={{ opacity: 0.75 }}> (ca. {jpegDims.w}x{jpegDims.h})</span> : null}
-          </div>
-
-          <div style={{ marginTop: 6 }}>
-            <strong>Sendt til API:</strong> {chosen.label}
-          </div>
-
-          <div style={{ marginTop: 6 }}>
-            <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
-          </div>
-        </div>
-
-        {error ? <div style={{ marginTop: 10, color: "crimson" }}>{error}</div> : null}
-      </section>
-
-      <section
-  style={{
-    border: "1px solid rgba(0,0,0,0.12)",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-  }}
->
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-    <div style={{ fontWeight: 700 }}>Preview (det billede der sendes)</div>
-
-    <button
-      className="q-btn"
-      onClick={async () => {
-  try {
-    await callApi();
-  } catch (e: any) {
-    const msg = String(e?.message || e);
-    const stack = e?.stack ? "\n" + e.stack : "";
-    console.error("onClick caught:", msg, e);
-    setError(`onClick caught: ${msg}${stack}`);
-  }
-}}
-      disabled={apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl)}
-      style={{
-        padding: "10px 14px",
-        borderRadius: 10,
-        border: "1px solid rgba(0,0,0,0.18)",
-        background: apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl) ? "rgba(0,0,0,0.06)" : "black",
-        color: apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl) ? "rgba(0,0,0,0.5)" : "white",
-        cursor: apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl) ? "not-allowed" : "pointer",
-        fontWeight: 700,
-      }}
-    >
-      {apiBusy ? "Analyserer…" : "Analyser billede"}
-    </button>
-  </div>
-
-  <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "stretch" }}>
-    <div
-      style={{
-        flex: "1 1 260px",
-        borderRadius: 10,
-        background: "rgba(0,0,0,0.03)",
-        border: "1px solid rgba(0,0,0,0.10)",
-        padding: 12,
-        minHeight: 280,
-      }}
-    >
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>Analyse</div>
-      <div style={{ fontSize: 12, opacity: 0.75 }}>
-        Grundig analyse (thorough). Finder flere ting (dyrere).
-      </div>
-
-      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+      <header className="top">
         <div>
-          <strong>Sendt til API:</strong> {chosen.label}
+          <div className="kicker">Qartigo</div>
+          <h1 className="h1">Fridge Scan</h1>
+          <p className="sub">
+            Upload et billede. Appen vælger automatisk den mindste payload (Original dataURL vs downscaled JPEG) og sender kun den mindste til API’et.
+          </p>
         </div>
-        <div style={{ marginTop: 6 }}>
-          <strong>Status:</strong> {busy ? "Behandler…" : "Idle"}
+        <div className="pill">
+          <span className="dot" />
+          <span>{apiBusy ? "Analyserer…" : busy ? "Forbereder…" : "Klar"}</span>
         </div>
-      </div>
-    </div>
+      </header>
 
-    <div
-      style={{
-        flex: "2 1 420px",
-        borderRadius: 10,
-        overflow: "hidden",
-        background: "rgba(0,0,0,0.03)",
-        border: "1px solid rgba(0,0,0,0.10)",
-        height: 280,
-        maxHeight: 280,
-        padding: 12,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {sanitizeDataUrl(chosen.dataUrl) ? (
-        <img
-          src={sanitizeDataUrl(chosen.dataUrl)}
-          alt="Chosen preview"
-          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
-        />
-      ) : (
-        <div style={{ opacity: 0.6 }}>Ingen preview</div>
-      )}
-    </div>
-  </div>
+      {error ? (
+        <div className="alert alert-err">
+          <div className="alertTitle">Fejl</div>
+          <pre className="pre">{error}</pre>
+        </div>
+      ) : null}
 
-  {error ? <div style={{ marginTop: 10, color: "crimson" }}>{error}</div> : null}
-</section>
+      <section className="grid">
+        {/* LEFT: Upload + Preview */}
+        <div className="col">
+          <div className="card">
+            <div className="cardHead">
+              <div>
+                <div className="cardTitle">Billede</div>
+                <div className="cardHint">Vælg et foto fra din enhed</div>
+              </div>
 
-<section
-        style={{
-          border: "1px solid rgba(0,0,0,0.12)",
-          borderRadius: 12,
-          padding: 16,
-          marginTop: 16,
-        }}
-      >
-        {apiResult?.ok === true ? (
-          <div style={{ borderRadius: 10, padding: 12, background: "rgba(0, 128, 0, 0.08)" }}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Ingredienser</div>
+              <div className="actions">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickFile}
+                  className="hiddenInput"
+                />
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={busy || apiBusy}
+                >
+                  Vælg billede
+                </button>
 
-            {sortedItems.length ? (
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {sortedItems.map((it, idx) => {
-                  const conf = fmtConfidence(it.confidence);
-                  return (
-                    <li key={idx}>
-                      {it.name}
-                      {conf ? <span style={{ opacity: 0.75 }}> {SHOW_RAW ? `(${conf})` : ""}</span> : null}
-                    </li>
-                  );
-                })}
-              </ul>
+                <button
+                  className="btn btn-primary"
+                  onClick={callApi}
+                  disabled={apiBusy || busy || !chosen.dataUrl}
+                >
+                  {apiBusy ? "Analyserer…" : "Analyser billede"}
+                </button>
+              </div>
+            </div>
+
+            <div className="meta">
+              <div className="metaRow">
+                <div className="metaKey">Fil</div>
+                <div className="metaVal">
+                  {pickedInfo ? (
+                    <span className="mono">
+                      {pickedInfo.name} • {pickedInfo.type} • {formatBytes(pickedInfo.size)}
+                    </span>
+                  ) : (
+                    <span className="muted">Ingen fil valgt</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="metaRow">
+                <div className="metaKey">Payload</div>
+                <div className="metaVal">
+                  <div className="chips">
+                    <span className="chip">
+                      Original: <span className="mono">{formatBytes(originalBytes)}</span>
+                    </span>
+                    <span className="chip">
+                      JPEG: <span className="mono">{formatBytes(jpegBytes)}</span>
+                      {jpegDims ? <span className="muted"> • {jpegDims.w}×{jpegDims.h}</span> : null}
+                    </span>
+                    <span className="chip chip-strong">
+                      Sendt: <span className="mono">{chosen.label}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="previewWrap">
+              {chosen.dataUrl ? (
+                <img className="previewImg" src={chosen.dataUrl} alt="Chosen preview" />
+              ) : (
+                <div className="previewEmpty">Ingen preview</div>
+              )}
+            </div>
+
+            <div className="footerNote">
+              Tip: hvis billedet er mørkt/rodet, bliver output mere usikkert. Beskæring hjælper.
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Results */}
+        <div className="col">
+          <div className="card">
+            <div className="cardHead">
+              <div>
+                <div className="cardTitle">Analyse</div>
+                <div className="cardHint">Ingredienser + beholdere/emballage fra scenen</div>
+              </div>
+            </div>
+
+            {!apiResult ? (
+              <div className="emptyState">
+                <div className="emptyTitle">Ingen analyse endnu</div>
+                <div className="emptyText">Vælg et billede og tryk “Analyser billede”.</div>
+              </div>
+            ) : apiResult.ok === false ? (
+              <div className="alert alert-err">
+                <div className="alertTitle">{apiResult.error}</div>
+                {apiResult.raw ? <pre className="pre">{JSON.stringify(apiResult.raw, null, 2)}</pre> : null}
+              </div>
             ) : (
-              <div style={{ opacity: 0.8 }}>Ingen ingredienser fundet.</div>
-            )}
+              <>
+                <div className="resultSummary">
+                  <div className="count">
+                    Fundet <span className="mono">{sortedItems.length}</span> items
+                  </div>
+                  <div className="muted">Sorterede efter confidence</div>
+                </div>
 
-            {SHOW_RAW ? (
-              <details style={{ marginTop: 12 }}>
-                <summary style={{ cursor: "pointer" }}>Rå API-respons (kun i dev)</summary>
-                <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
-{JSON.stringify(apiResult.raw ?? {}, null, 2)}
-                </pre>
-              </details>
-            ) : null}
-          </div>
-        ) : apiResult?.ok === false ? (
-          <div style={{ borderRadius: 10, padding: 12, background: "rgba(220, 20, 60, 0.10)" }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Fejl</div>
-            <div>{apiResult.error}</div>
-            {SHOW_RAW ? (
-              <pre style={{ marginTop: 10, fontSize: 12, opacity: 0.85, whiteSpace: "pre-wrap" }}>
-{JSON.stringify(apiResult.raw ?? {}, null, 2)}
-              </pre>
-            ) : null}
-          </div>
-        ) : (
-          <div style={{ opacity: 0.75 }}>Ingen analyse endnu.</div>
-        )}
-      </section>
+                {sortedItems.length ? (
+                  <ul className="list">
+                    {sortedItems.map((it, idx) => {
+                      const conf = fmtConfidence(it.confidence);
+                      const kind = it.kind ? String(it.kind) : "";
+                      const contents = it.contents ? String(it.contents) : "";
+                      return (
+                        <li className="row" key={idx}>
+                          <div className="rowMain">
+                            <div className="rowName">{it.name}</div>
+                            <div className="rowTags">
+                              {kind ? <span className="tag">{kind}</span> : null}
+                              {contents ? <span className="tag tag-soft">contents: {contents}</span> : null}
+                            </div>
+                          </div>
+                          <div className="rowRight">
+                            {conf ? <span className="badge">{conf}</span> : <span className="badge badge-soft">—</span>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="emptyState">
+                    <div className="emptyTitle">Ingen items</div>
+                    <div className="emptyText">Prøv et skarpere/beskåret billede.</div>
+                  </div>
+                )}
+
+                <details className="details">
+                  <summary>Vis rå JSON</summary>
+                  <pre className="pre">{JSON.stringify(apiResult.raw, null, 2)}</pre>
+                </details>
+              </>
+            )}
           </div>
         </div>
       </section>
 
-
-      <div style={{ marginTop: 18, fontSize: 12, opacity: 0.7 }}>
-        Note: Hvis originalen er en lille WEBP, kan JPEG-varianten blive større. Derfor vælges altid den mindste payload automatisk.
-      </div>
+      <footer className="bottom">
+        <div className="muted">
+          /api/fridge • sender altid thorough • viser altid mindste payload
+        </div>
+      </footer>
     </main>
   );
 }
+
+const css = `
+:root {
+  --bg: #0b0c10;
+  --card: rgba(255,255,255,0.06);
+  --card2: rgba(255,255,255,0.045);
+  --stroke: rgba(255,255,255,0.10);
+  --stroke2: rgba(255,255,255,0.14);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.62);
+  --muted2: rgba(255,255,255,0.50);
+  --shadow: 0 18px 60px rgba(0,0,0,0.55);
+  --radius: 18px;
+  --radius2: 14px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7fb;
+    --card: rgba(255,255,255,0.92);
+    --card2: rgba(0,0,0,0.03);
+    --stroke: rgba(0,0,0,0.08);
+    --stroke2: rgba(0,0,0,0.12);
+    --text: rgba(0,0,0,0.86);
+    --muted: rgba(0,0,0,0.60);
+    --muted2: rgba(0,0,0,0.50);
+    --shadow: 0 18px 60px rgba(0,0,0,0.10);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font-family: var(--sans); background: radial-gradient(1200px 800px at 20% 0%, rgba(122,92,255,0.16), transparent 55%),
+                                     radial-gradient(1000px 600px at 90% 10%, rgba(0,200,255,0.12), transparent 50%),
+                                     var(--bg);
+       color: var(--text); }
+
+.wrap { max-width: 1120px; margin: 38px auto; padding: 0 18px; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.kicker { letter-spacing: 0.12em; text-transform: uppercase; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.h1 { font-size: 34px; line-height: 1.12; margin: 0 0 10px 0; }
+.sub { margin: 0; color: var(--muted); max-width: 780px; }
+.pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 999px; border: 1px solid var(--stroke); background: var(--card); box-shadow: var(--shadow); }
+.dot { width: 10px; height: 10px; border-radius: 999px; background: rgba(0,255,170,0.9); box-shadow: 0 0 0 4px rgba(0,255,170,0.16); }
+
+.grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; align-items: start; }
+@media (max-width: 980px) { .grid { grid-template-columns: 1fr; } .pill { display: none; } }
+
+.card { border: 1px solid var(--stroke); background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.cardHead { padding: 16px 16px 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--stroke); }
+.cardTitle { font-weight: 750; font-size: 16px; }
+.cardHint { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.hiddenInput { position: absolute; left: -99999px; width: 1px; height: 1px; opacity: 0; }
+
+.btn { border-radius: 12px; padding: 10px 14px; font-weight: 700; border: 1px solid var(--stroke2); cursor: pointer; transition: transform .08s ease, filter .12s ease, background .12s ease, border-color .12s ease; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary { background: rgba(255,255,255,0.94); color: rgba(0,0,0,0.92); }
+.btn-secondary { background: transparent; color: var(--text); }
+.btn:hover:enabled { filter: brightness(1.03); transform: translateY(-1px); }
+.btn:active:enabled { transform: translateY(0px); }
+
+.meta { padding: 14px 16px 0 16px; }
+.metaRow { display: grid; grid-template-columns: 86px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.00); }
+.metaRow + .metaRow { border-top: 1px solid rgba(0,0,0,0.0); }
+.metaKey { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em; padding-top: 3px; }
+.metaVal { font-size: 14px; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); }
+
+.chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--stroke); background: var(--card2); padding: 8px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); }
+.chip-strong { color: var(--text); border-color: var(--stroke2); }
+
+.previewWrap { margin: 14px 16px 10px 16px; border-radius: var(--radius2); border: 1px solid var(--stroke); background: var(--card2); height: 340px; display: grid; place-items: center; overflow: hidden; }
+.previewImg { width: 100%; height: 100%; object-fit: contain; display: block; }
+.previewEmpty { color: var(--muted); font-size: 13px; }
+
+.footerNote { padding: 0 16px 14px 16px; color: var(--muted2); font-size: 12px; }
+
+.alert { margin: 14px 0; border-radius: var(--radius); border: 1px solid var(--stroke); padding: 14px 16px; background: var(--card); box-shadow: var(--shadow); }
+.alert-err { border-color: rgba(255, 90, 90, 0.35); }
+.alertTitle { font-weight: 800; margin-bottom: 8px; }
+.pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+.emptyState { padding: 22px 16px; }
+.emptyTitle { font-weight: 800; margin-bottom: 6px; }
+.emptyText { color: var(--muted); font-size: 13px; }
+
+.resultSummary { padding: 14px 16px 0 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.count { font-weight: 800; }
+.list { list-style: none; margin: 12px 0 0 0; padding: 0; }
+.row { padding: 12px 16px; border-top: 1px solid var(--stroke); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.rowMain { min-width: 0; }
+.rowName { font-weight: 760; }
+.rowTags { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { font-size: 12px; color: var(--text); border: 1px solid var(--stroke); background: var(--card2); padding: 5px 8px; border-radius: 999px; }
+.tag-soft { color: var(--muted); }
+.rowRight { flex: 0 0 auto; }
+.badge { font-family: var(--mono); font-size: 12px; padding: 7px 9px; border-radius: 999px; border: 1px solid var(--stroke2); background: rgba(0,0,0,0.10); }
+@media (prefers-color-scheme: light) {
+  .badge { background: rgba(0,0,0,0.03); }
+}
+.badge-soft { color: var(--muted); border-color: var(--stroke); }
+
+.details { margin: 14px 16px 16px 16px; border-top: 1px solid var(--stroke); padding-top: 12px; }
+.details summary { cursor: pointer; color: var(--muted); font-weight: 700; }
+.details[open] summary { margin-bottom: 10px; }
+
+.bottom { margin-top: 16px; padding: 8px 2px 22px 2px; }
+`;
