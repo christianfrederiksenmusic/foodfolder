@@ -173,13 +173,6 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   const [apiResult, setApiResult] = useState<ApiResponse>(null);
   const [error, setError] = useState("");
 
-  function setErr(e: any, note?: string) {
-    const callsite = new Error("CALLSITE").stack || "";
-    const msg = (note ? note + ": " : "") + formatErr(e);
-    console.error("SETERR:", msg, e);
-    setErr(msg + (callsite ? "\n\n" + callsite : ""));
-  }
-
   // Global error catcher (Safari giver ellers kun "The string did not match the expected pattern.")
   React.useEffect(() => {
     const onError = (event: any) => {
@@ -188,7 +181,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         const msg = (event?.message || String(event?.error?.message || event?.error || event)) + loc;
         const stack = event?.error?.stack ? "\n" + event.error.stack : "";
         console.error("GLOBAL_ERROR:", msg, event?.error);
-        setErr(`GLOBAL_ERROR: ${msg}${stack}`);
+        setError(`GLOBAL_ERROR: ${msg}${stack}`);
       } catch (e) {
         console.error("GLOBAL_ERROR (handler failed):", e);
       }
@@ -200,7 +193,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
         const msg = String(err?.message || err || event);
         const stack = err?.stack ? "\n" + err.stack : "";
         console.error("UNHANDLED_REJECTION:", msg, err);
-        setErr(`UNHANDLED_REJECTION: ${msg}${stack}`);
+        setError(`UNHANDLED_REJECTION: ${msg}${stack}`);
       } catch (e) {
         console.error("UNHANDLED_REJECTION (handler failed):", e);
       }
@@ -232,7 +225,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   }, [originalDataUrl, jpegDataUrl, originalBytes, jpegBytes]);
 
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    setErr("");
+    setError("");
     setApiResult(null);
 
     const file = e.target.files?.[0];
@@ -259,7 +252,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       setJpegDataUrl(jpg);
       setJpegDims({ w: width, h: height });
     } catch (err: any) {
-      setErr(err?.message ?? "Ukendt fejl ved billedbehandling.");
+      setError(err?.message ?? "Ukendt fejl ved billedbehandling.");
       setOriginalDataUrl("");
       setJpegDataUrl("");
       setJpegDims(null);
@@ -269,11 +262,11 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   }
 
   async function callApi() {
-    setErr("");
+    setError("");
     setApiResult(null);
 
     if (!sanitizeDataUrl(chosen.dataUrl)) {
-      setErr("Vælg et billede først.");
+      setError("Vælg et billede først.");
       return;
     }
 
@@ -398,7 +391,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
                 setJpegDataUrl("");
                 setJpegDims(null);
                 setApiResult(null);
-                setErr("");
+                setError("");
               }}
               disabled={busy || apiBusy}
               style={{
@@ -462,7 +455,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     const msg = String(e?.message || e);
     const stack = e?.stack ? "\n" + e.stack : "";
     console.error("onClick caught:", msg, e);
-    setErr(`onClick caught: ${msg}${stack}`);
+    setError(`onClick caught: ${msg}${stack}`);
   }
 }}
       disabled={apiBusy || busy || !sanitizeDataUrl(chosen.dataUrl)}
