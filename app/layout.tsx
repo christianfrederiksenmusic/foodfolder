@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, DM_Sans, Sora } from "next/font/google";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-body" });
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="da">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${dmSans.variable} ${sora.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-body)" }}
       >
         {children}
