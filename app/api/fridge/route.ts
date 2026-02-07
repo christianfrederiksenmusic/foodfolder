@@ -1,12 +1,5 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
-  return Response.json(
-    { ok: true, message: "Use POST to /api/fridge with { image: <dataURL> }" },
-    { status: 200 }
-  );
-}
-
 
 
 function extractJsonObject(raw: string): string {
