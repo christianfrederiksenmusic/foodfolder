@@ -1,0 +1,391 @@
+export type Lang =
+  | "da"
+  | "no"
+  | "sv"
+  | "de"
+  | "en"
+  | "fr"
+  | "it"
+  | "es"
+  | "pt"
+  | "ar";
+
+export const LANGS: Array<{ code: Lang; label: string; dir: "ltr" | "rtl" }> = [
+  { code: "da", label: "Dansk", dir: "ltr" },
+  { code: "no", label: "Norsk", dir: "ltr" },
+  { code: "sv", label: "Svenska", dir: "ltr" },
+  { code: "de", label: "Deutsch", dir: "ltr" },
+  { code: "en", label: "English", dir: "ltr" },
+  { code: "fr", label: "Français", dir: "ltr" },
+  { code: "it", label: "Italiano", dir: "ltr" },
+  { code: "es", label: "Español", dir: "ltr" },
+  { code: "pt", label: "Português", dir: "ltr" },
+  { code: "ar", label: "العربية", dir: "rtl" },
+];
+
+export type TKey =
+  | "brand"
+  | "title"
+  | "subtitle"
+  | "status_ready"
+  | "status_preparing"
+  | "status_analyzing"
+  | "image_card_title"
+  | "image_card_subtitle"
+  | "upload"
+  | "analyze"
+  | "analyzing"
+  | "tap_to_choose"
+  | "formats_hint"
+  | "error_title"
+  | "ingredients_title"
+  | "ingredients_subtitle"
+  | "no_analysis_title"
+  | "no_analysis_subtitle"
+  | "no_items_title"
+  | "no_items_subtitle"
+  | "recipes_title"
+  | "recipes_subtitle"
+  | "constraints_placeholder"
+  | "make_recipes"
+  | "generating"
+  | "api_footer"
+  | "language_label"
+  | "missing_image"
+  | "missing_items";
+
+export const I18N: Record<Lang, Record<TKey, string>> = {
+  da: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Upload et foto af dit køleskab. Få ingredienser udtrukket - og lav opskrifter på få sekunder.",
+    status_ready: "Klar",
+    status_preparing: "Forbereder",
+    status_analyzing: "Analyserer",
+    image_card_title: "Billede",
+    image_card_subtitle: "Vælg et foto og kør analyse.",
+    upload: "Upload",
+    analyze: "Analyser",
+    analyzing: "Analyserer...",
+    tap_to_choose: "Klik for at vælge et billede",
+    formats_hint: "JPG/PNG/HEIC - vi optimerer automatisk payloaden",
+    error_title: "Fejl",
+    ingredients_title: "Ingredienser",
+    ingredients_subtitle: "Efter analysen kan du generere opskrifter.",
+    no_analysis_title: "Ingen analyse endnu",
+    no_analysis_subtitle: "Upload et billede og tryk “Analyser”.",
+    no_items_title: "Ingen items",
+    no_items_subtitle: "Prøv et skarpere/beskåret billede.",
+    recipes_title: "Lav opskrifter",
+    recipes_subtitle: "Skriv constraints og generér forslag.",
+    constraints_placeholder:
+      "fx: hurtigt, simpelt, få ingredienser, ingen fancy udstyr",
+    make_recipes: "Lav opskrifter",
+    generating: "Genererer...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Sprog",
+    missing_image: "Vælg et billede først.",
+    missing_items: "Kør analyse først (vi mangler ingredienser).",
+  },
+  no: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Last opp et bilde av kjøleskapet ditt. Hent ut ingredienser og lag oppskrifter på sekunder.",
+    status_ready: "Klar",
+    status_preparing: "Forbereder",
+    status_analyzing: "Analyserer",
+    image_card_title: "Bilde",
+    image_card_subtitle: "Velg et bilde og kjør analyse.",
+    upload: "Last opp",
+    analyze: "Analyser",
+    analyzing: "Analyserer...",
+    tap_to_choose: "Klikk for å velge et bilde",
+    formats_hint: "JPG/PNG/HEIC - vi minimerer payload automatisk",
+    error_title: "Feil",
+    ingredients_title: "Ingredienser",
+    ingredients_subtitle: "Etter analysen kan du generere oppskrifter.",
+    no_analysis_title: "Ingen analyse ennå",
+    no_analysis_subtitle: "Last opp et bilde og trykk “Analyser”.",
+    no_items_title: "Ingen elementer",
+    no_items_subtitle: "Prøv et skarpere/beskåret bilde.",
+    recipes_title: "Lag oppskrifter",
+    recipes_subtitle: "Skriv begrensninger og generer forslag.",
+    constraints_placeholder:
+      "f.eks.: raskt, enkelt, få ingredienser, ingen fancy utstyr",
+    make_recipes: "Lag oppskrifter",
+    generating: "Genererer...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Språk",
+    missing_image: "Velg et bilde først.",
+    missing_items: "Kjør analyse først (vi trenger ingredienser).",
+  },
+  sv: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Ladda upp ett foto av ditt kylskåp. Extrahera ingredienser och skapa recept på sekunder.",
+    status_ready: "Redo",
+    status_preparing: "Förbereder",
+    status_analyzing: "Analyserar",
+    image_card_title: "Bild",
+    image_card_subtitle: "Välj ett foto och kör analys.",
+    upload: "Ladda upp",
+    analyze: "Analysera",
+    analyzing: "Analyserar...",
+    tap_to_choose: "Klicka för att välja en bild",
+    formats_hint: "JPG/PNG/HEIC - vi minimerar payload automatiskt",
+    error_title: "Fel",
+    ingredients_title: "Ingredienser",
+    ingredients_subtitle: "Efter analysen kan du skapa recept.",
+    no_analysis_title: "Ingen analys ännu",
+    no_analysis_subtitle: "Ladda upp en bild och tryck “Analysera”.",
+    no_items_title: "Inga objekt",
+    no_items_subtitle: "Prova en skarpare/beskuren bild.",
+    recipes_title: "Skapa recept",
+    recipes_subtitle: "Skriv begränsningar och generera förslag.",
+    constraints_placeholder:
+      "t.ex.: snabbt, enkelt, få ingredienser, ingen fancy utrustning",
+    make_recipes: "Skapa recept",
+    generating: "Genererar...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Språk",
+    missing_image: "Välj en bild först.",
+    missing_items: "Kör analys först (vi behöver ingredienser).",
+  },
+  de: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Lade ein Foto deines Kühlschranks hoch. Zutaten extrahieren und in Sekunden Rezepte erzeugen.",
+    status_ready: "Bereit",
+    status_preparing: "Vorbereiten",
+    status_analyzing: "Analysiert",
+    image_card_title: "Bild",
+    image_card_subtitle: "Foto auswählen und Analyse starten.",
+    upload: "Hochladen",
+    analyze: "Analysieren",
+    analyzing: "Analysiert...",
+    tap_to_choose: "Klicken, um ein Bild auszuwählen",
+    formats_hint: "JPG/PNG/HEIC - Payload wird automatisch minimiert",
+    error_title: "Fehler",
+    ingredients_title: "Zutaten",
+    ingredients_subtitle: "Nach der Analyse kannst du Rezepte erzeugen.",
+    no_analysis_title: "Noch keine Analyse",
+    no_analysis_subtitle: "Bild hochladen und “Analysieren” drücken.",
+    no_items_title: "Keine Einträge",
+    no_items_subtitle: "Ein schärferes/zugeschnittenes Bild versuchen.",
+    recipes_title: "Rezepte erzeugen",
+    recipes_subtitle: "Constraints eingeben und Vorschläge erzeugen.",
+    constraints_placeholder:
+      "z.B.: schnell, simpel, wenige Zutaten, keine Spezialgeräte",
+    make_recipes: "Rezepte erzeugen",
+    generating: "Erzeugt...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Sprache",
+    missing_image: "Bitte zuerst ein Bild auswählen.",
+    missing_items: "Bitte zuerst analysieren (wir brauchen Zutaten).",
+  },
+  en: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Upload a photo of your fridge. Extract ingredients and generate recipes in seconds.",
+    status_ready: "Ready",
+    status_preparing: "Preparing",
+    status_analyzing: "Analyzing",
+    image_card_title: "Image",
+    image_card_subtitle: "Choose a photo and run analysis.",
+    upload: "Upload",
+    analyze: "Analyze",
+    analyzing: "Analyzing...",
+    tap_to_choose: "Click to choose an image",
+    formats_hint: "JPG/PNG/HEIC - payload is minimized automatically",
+    error_title: "Error",
+    ingredients_title: "Ingredients",
+    ingredients_subtitle: "After analysis you can generate recipes.",
+    no_analysis_title: "No analysis yet",
+    no_analysis_subtitle: "Upload an image and press “Analyze”.",
+    no_items_title: "No items",
+    no_items_subtitle: "Try a sharper/cropped image.",
+    recipes_title: "Generate recipes",
+    recipes_subtitle: "Add constraints and generate suggestions.",
+    constraints_placeholder:
+      "e.g. quick, simple, few ingredients, no fancy equipment",
+    make_recipes: "Generate recipes",
+    generating: "Generating...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Language",
+    missing_image: "Pick an image first.",
+    missing_items: "Run analysis first (we need ingredients).",
+  },
+  fr: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Téléverse une photo de ton frigo. Extrait les ingrédients et génère des recettes en quelques secondes.",
+    status_ready: "Prêt",
+    status_preparing: "Préparation",
+    status_analyzing: "Analyse",
+    image_card_title: "Image",
+    image_card_subtitle: "Choisis une photo et lance l’analyse.",
+    upload: "Téléverser",
+    analyze: "Analyser",
+    analyzing: "Analyse...",
+    tap_to_choose: "Clique pour choisir une image",
+    formats_hint: "JPG/PNG/HEIC - payload minimisé automatiquement",
+    error_title: "Erreur",
+    ingredients_title: "Ingrédients",
+    ingredients_subtitle: "Après l’analyse, tu peux générer des recettes.",
+    no_analysis_title: "Pas encore d’analyse",
+    no_analysis_subtitle: "Téléverse une image et appuie sur “Analyser”.",
+    no_items_title: "Aucun élément",
+    no_items_subtitle: "Essaie une image plus nette/recadrée.",
+    recipes_title: "Générer des recettes",
+    recipes_subtitle: "Ajoute des contraintes et génère des idées.",
+    constraints_placeholder:
+      "ex: rapide, simple, peu d’ingrédients, sans matériel spécial",
+    make_recipes: "Générer des recettes",
+    generating: "Génération...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Langue",
+    missing_image: "Choisis d’abord une image.",
+    missing_items: "Lance d’abord l’analyse (ingrédients requis).",
+  },
+  it: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Carica una foto del tuo frigorifero. Estrai ingredienti e genera ricette in pochi secondi.",
+    status_ready: "Pronto",
+    status_preparing: "Preparazione",
+    status_analyzing: "Analisi",
+    image_card_title: "Immagine",
+    image_card_subtitle: "Scegli una foto e avvia l’analisi.",
+    upload: "Carica",
+    analyze: "Analizza",
+    analyzing: "Analizzando...",
+    tap_to_choose: "Clicca per scegliere un’immagine",
+    formats_hint: "JPG/PNG/HEIC - payload minimizzato automaticamente",
+    error_title: "Errore",
+    ingredients_title: "Ingredienti",
+    ingredients_subtitle: "Dopo l’analisi puoi generare ricette.",
+    no_analysis_title: "Nessuna analisi ancora",
+    no_analysis_subtitle: "Carica un’immagine e premi “Analizza”.",
+    no_items_title: "Nessun elemento",
+    no_items_subtitle: "Prova un’immagine più nitida/ritagliata.",
+    recipes_title: "Genera ricette",
+    recipes_subtitle: "Aggiungi vincoli e genera suggerimenti.",
+    constraints_placeholder:
+      "es: veloce, semplice, pochi ingredienti, niente attrezzi speciali",
+    make_recipes: "Genera ricette",
+    generating: "Generazione...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Lingua",
+    missing_image: "Scegli prima un’immagine.",
+    missing_items: "Esegui prima l’analisi (servono ingredienti).",
+  },
+  es: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Sube una foto de tu nevera. Extrae ingredientes y genera recetas en segundos.",
+    status_ready: "Listo",
+    status_preparing: "Preparando",
+    status_analyzing: "Analizando",
+    image_card_title: "Imagen",
+    image_card_subtitle: "Elige una foto y analiza.",
+    upload: "Subir",
+    analyze: "Analizar",
+    analyzing: "Analizando...",
+    tap_to_choose: "Haz clic para elegir una imagen",
+    formats_hint: "JPG/PNG/HEIC - el payload se minimiza automáticamente",
+    error_title: "Error",
+    ingredients_title: "Ingredientes",
+    ingredients_subtitle: "Después del análisis puedes generar recetas.",
+    no_analysis_title: "Aún no hay análisis",
+    no_analysis_subtitle: "Sube una imagen y pulsa “Analizar”.",
+    no_items_title: "Sin elementos",
+    no_items_subtitle: "Prueba una imagen más nítida/recortada.",
+    recipes_title: "Generar recetas",
+    recipes_subtitle: "Añade restricciones y genera sugerencias.",
+    constraints_placeholder:
+      "p. ej.: rápido, simple, pocos ingredientes, sin equipo especial",
+    make_recipes: "Generar recetas",
+    generating: "Generando...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Idioma",
+    missing_image: "Primero elige una imagen.",
+    missing_items: "Primero analiza (faltan ingredientes).",
+  },
+  pt: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle:
+      "Envie uma foto da sua geladeira. Extraia ingredientes e gere receitas em segundos.",
+    status_ready: "Pronto",
+    status_preparing: "Preparando",
+    status_analyzing: "Analisando",
+    image_card_title: "Imagem",
+    image_card_subtitle: "Escolha uma foto e analise.",
+    upload: "Enviar",
+    analyze: "Analisar",
+    analyzing: "Analisando...",
+    tap_to_choose: "Clique para escolher uma imagem",
+    formats_hint: "JPG/PNG/HEIC - payload minimizado automaticamente",
+    error_title: "Erro",
+    ingredients_title: "Ingredientes",
+    ingredients_subtitle: "Depois da análise você pode gerar receitas.",
+    no_analysis_title: "Ainda sem análise",
+    no_analysis_subtitle: "Envie uma imagem e clique “Analisar”.",
+    no_items_title: "Sem itens",
+    no_items_subtitle: "Tente uma imagem mais nítida/recortada.",
+    recipes_title: "Gerar receitas",
+    recipes_subtitle: "Adicione restrições e gere sugestões.",
+    constraints_placeholder:
+      "ex.: rápido, simples, poucos ingredientes, sem equipamento especial",
+    make_recipes: "Gerar receitas",
+    generating: "Gerando...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "Idioma",
+    missing_image: "Escolha uma imagem primeiro.",
+    missing_items: "Faça a análise primeiro (precisamos dos ingredientes).",
+  },
+  ar: {
+    brand: "QARTIGO",
+    title: "FoodFolder",
+    subtitle: "ارفع صورة لثلاجتك. استخرج المكونات وأنشئ وصفات خلال ثوانٍ.",
+    status_ready: "جاهز",
+    status_preparing: "تجهيز",
+    status_analyzing: "تحليل",
+    image_card_title: "صورة",
+    image_card_subtitle: "اختر صورة وشغّل التحليل.",
+    upload: "رفع",
+    analyze: "حلّل",
+    analyzing: "جارٍ التحليل...",
+    tap_to_choose: "انقر لاختيار صورة",
+    formats_hint: "JPG/PNG/HEIC - تقليل البيانات تلقائياً",
+    error_title: "خطأ",
+    ingredients_title: "المكونات",
+    ingredients_subtitle: "بعد التحليل يمكنك إنشاء وصفات.",
+    no_analysis_title: "لا يوجد تحليل بعد",
+    no_analysis_subtitle: "ارفع صورة واضغط “حلّل”.",
+    no_items_title: "لا عناصر",
+    no_items_subtitle: "جرّب صورة أوضح/مقصوصة.",
+    recipes_title: "إنشاء وصفات",
+    recipes_subtitle: "أضف قيوداً وأنشئ اقتراحات.",
+    constraints_placeholder: "مثال: سريع، بسيط، مكونات قليلة، بدون معدات خاصة",
+    make_recipes: "إنشاء وصفات",
+    generating: "جارٍ الإنشاء...",
+    api_footer: "API: /api/fridge + /api/recipes",
+    language_label: "اللغة",
+    missing_image: "اختر صورة أولاً.",
+    missing_items: "قم بالتحليل أولاً (نحتاج المكونات).",
+  },
+};
+
+export function t(lang: Lang, key: TKey): string {
+  const pack = I18N[lang] || I18N.da;
+  return pack[key] || I18N.da[key] || key;
+}
