@@ -309,10 +309,7 @@ export default function Page() {
         <div>
           <div className="kicker">Qartigo</div>
           <h1 className="h1">Fridge Scan</h1>
-          <p className="sub">
-            Upload et billede. Appen vælger automatisk den mindste payload (Original dataURL vs downscaled JPEG) og sender kun den mindste til API’et.
-          </p>
-        </div>
+</div>
         <div className="pill">
           <span className="dot" />
           <span>{apiBusy ? "Analyserer…" : busy ? "Forbereder…" : "Klar"}</span>
