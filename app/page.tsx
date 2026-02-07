@@ -1,5 +1,34 @@
 "use client";
 
+function debugDomError(err: any, label?: string): string {
+  try {
+    const name = err?.name ? String(err.name) : "Error";
+    const msg = err?.message ? String(err.message) : String(err);
+    const code = err?.code != null ? String(err.code) : "";
+    const stack = err?.stack ? String(err.stack) : "";
+    const own = err && (typeof err === "object" || typeof err === "function")
+      ? Object.getOwnPropertyNames(err).join(", ")
+      : "";
+    const proto = err && (typeof err === "object" || typeof err === "function")
+      ? Object.getOwnPropertyNames(Object.getPrototypeOf(err) || {}).slice(0, 30).join(", ")
+      : "";
+
+    const callsite = new Error("CALLSITE").stack || "";
+    return (
+      (label ? `[${label}] ` : "") +
+      `${name}: ${msg}` +
+      (code ? `\ncode: ${code}` : "") +
+      (own ? `\nownProps: ${own}` : "") +
+      (proto ? `\nprotoProps: ${proto}` : "") +
+      (stack ? `\n\nSTACK:\n${stack}` : "") +
+      (callsite ? `\n\nCALLSITE:\n${callsite}` : "")
+    );
+  } catch (e) {
+    return `debugDomError failed: ${String(e)}`;
+  }
+}
+
+
 const _B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 function uint8ToBase64(bytes: Uint8Array): string {
@@ -197,8 +226,8 @@ async function downscaleToJpegDataUrl(
     const i = new Image();
     i.onload = () => resolve(i);
     i.onerror = () => reject(new Error("Kunne ikke indlæse dataURL i <img> (image decode fejl)."));
-    i.src = dataUrl;
-  });
+    try { i.src = dataUrl; } catch (err) { throw new Error(debugDomError(err, "img.src=dataUrl")); }
+});
 
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
@@ -280,7 +309,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     const callsite = new Error("CALLSITE").stack || "";
     const msg = `[${label}] ` + formatErr(err) + (callsite ? "\n\n" + callsite : "");
     console.error("DEBUG_ERROR:", msg, err);
-    setError(msg);
+    setError(debugDomError(new Error(msg), "setError-msg"));
   }
 
   // Global error catcher (Safari giver ellers kun "The string did not match the expected pattern.")
