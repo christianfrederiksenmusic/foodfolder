@@ -71,7 +71,8 @@ function dataUrlByteSize(dataUrl: string): number {
 }
 
 function base64FromBytes(bytes: Uint8Array): string {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   let out = "";
   let i = 0;
   for (; i + 2 < bytes.length; i += 3) {
@@ -83,7 +84,8 @@ function base64FromBytes(bytes: Uint8Array): string {
       alphabet[n & 63];
   }
   if (i < bytes.length) {
-    const n = (bytes[i] << 16) | ((i + 1 < bytes.length ? bytes[i + 1] : 0) << 8);
+    const n =
+      (bytes[i] << 16) | ((i + 1 < bytes.length ? bytes[i + 1] : 0) << 8);
     out += alphabet[(n >>> 18) & 63] + alphabet[(n >>> 12) & 63];
     out += i + 1 < bytes.length ? alphabet[(n >>> 6) & 63] + "=" : "==";
   }
@@ -94,20 +96,34 @@ async function fileToDataUrl(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);
   const b64 = base64FromBytes(bytes);
-  const type = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
+  const type =
+    file.type && file.type.includes("/")
+      ? file.type
+      : "application/octet-stream";
   return `data:${type};base64,${b64}`;
 }
 
-async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): Promise<string> {
+async function canvasToJpegDataUrl(
+  canvas: HTMLCanvasElement,
+  quality = 0.82,
+): Promise<string> {
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("canvas.toBlob returned null"))), "image/jpeg", quality);
+    canvas.toBlob(
+      (b) =>
+        b ? resolve(b) : reject(new Error("canvas.toBlob returned null")),
+      "image/jpeg",
+      quality,
+    );
   });
   const buf = await blob.arrayBuffer();
   const b64 = base64FromBytes(new Uint8Array(buf));
   return `data:image/jpeg;base64,${b64}`;
 }
 
-async function downscaleToJpegDataUrl(file: File, opts: { maxDim: number; quality: number }) {
+async function downscaleToJpegDataUrl(
+  file: File,
+  opts: { maxDim: number; quality: number },
+) {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
     const url = URL.createObjectURL(file);
@@ -176,8 +192,12 @@ export default function Page() {
   const [error, setError] = useState("");
 
   const [recipesBusy, setRecipesBusy] = useState(false);
-  const [recipesResult, setRecipesResult] = useState<RecipesResult | null>(null);
-  const [constraints, setConstraints] = useState<string>(t("da", "constraints_placeholder"));
+  const [recipesResult, setRecipesResult] = useState<RecipesResult | null>(
+    null,
+  );
+  const [constraints, setConstraints] = useState<string>(
+    t("da", "constraints_placeholder"),
+  );
 
   const [sha, setSha] = useState<string>("");
 
@@ -212,17 +232,31 @@ export default function Page() {
     };
   }, []);
 
-  const originalBytes = useMemo(() => (originalDataUrl ? dataUrlByteSize(originalDataUrl) : 0), [originalDataUrl]);
-  const jpegBytes = useMemo(() => (jpegDataUrl ? dataUrlByteSize(jpegDataUrl) : 0), [jpegDataUrl]);
+  const originalBytes = useMemo(
+    () => (originalDataUrl ? dataUrlByteSize(originalDataUrl) : 0),
+    [originalDataUrl],
+  );
+  const jpegBytes = useMemo(
+    () => (jpegDataUrl ? dataUrlByteSize(jpegDataUrl) : 0),
+    [jpegDataUrl],
+  );
 
   const chosen = useMemo(() => {
     if (!originalDataUrl && !jpegDataUrl) return { label: "none", dataUrl: "" };
-    if (originalDataUrl && !jpegDataUrl) return { label: "original", dataUrl: originalDataUrl };
-    if (!originalDataUrl && jpegDataUrl) return { label: "jpeg", dataUrl: jpegDataUrl };
-    return originalBytes <= jpegBytes ? { label: "original", dataUrl: originalDataUrl } : { label: "jpeg", dataUrl: jpegDataUrl };
+    if (originalDataUrl && !jpegDataUrl)
+      return { label: "original", dataUrl: originalDataUrl };
+    if (!originalDataUrl && jpegDataUrl)
+      return { label: "jpeg", dataUrl: jpegDataUrl };
+    return originalBytes <= jpegBytes
+      ? { label: "original", dataUrl: originalDataUrl }
+      : { label: "jpeg", dataUrl: jpegDataUrl };
   }, [originalDataUrl, jpegDataUrl, originalBytes, jpegBytes]);
 
-  const statusLabel = apiBusy ? t(lang, "status_analyzing") : busy ? t(lang, "status_preparing") : t(lang, "status_ready");
+  const statusLabel = apiBusy
+    ? t(lang, "status_analyzing")
+    : busy
+      ? t(lang, "status_preparing")
+      : t(lang, "status_ready");
   const versionShort = sha && sha !== "unknown" ? sha.slice(0, 7) : "";
   const dir = langDir(lang);
 
@@ -245,7 +279,10 @@ export default function Page() {
       setOriginalDataUrl(orig);
 
       try {
-        const { jpegDataUrl: jpg } = await downscaleToJpegDataUrl(file, { maxDim: MAX_DIM, quality: JPEG_QUALITY });
+        const { jpegDataUrl: jpg } = await downscaleToJpegDataUrl(file, {
+          maxDim: MAX_DIM,
+          quality: JPEG_QUALITY,
+        });
         setJpegDataUrl(jpg || "");
       } catch {
         setJpegDataUrl("");
@@ -278,7 +315,7 @@ export default function Page() {
       const res = await fetch("/api/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: payload, mode: "thorough" })
+        body: JSON.stringify({ image: payload, mode: "thorough" }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -290,7 +327,7 @@ export default function Page() {
           requestId: json?.requestId,
           sha: json?.sha,
           retry_after_seconds: json?.retry_after_seconds,
-          raw: json
+          raw: json,
         });
         return;
       }
@@ -299,14 +336,22 @@ export default function Page() {
         ? json.items
             .map((it: any) => ({
               name: String(it?.name ?? "").trim(),
-              confidence: typeof it?.confidence === "number" ? it.confidence : undefined,
+              confidence:
+                typeof it?.confidence === "number" ? it.confidence : undefined,
               kind: typeof it?.kind === "string" ? it.kind : undefined,
-              contents: typeof it?.contents === "string" ? it.contents : undefined
+              contents:
+                typeof it?.contents === "string" ? it.contents : undefined,
             }))
             .filter((it: ApiItem) => it.name.length > 0)
         : [];
 
-      setApiResult({ ok: true, items, requestId: json?.requestId, sha: json?.sha, meta: json?.meta });
+      setApiResult({
+        ok: true,
+        items,
+        requestId: json?.requestId,
+        sha: json?.sha,
+        meta: json?.meta,
+      });
     } catch (err: any) {
       setApiResult({ ok: false, error: err?.message ?? "Network error." });
     } finally {
@@ -331,8 +376,8 @@ export default function Page() {
           items: apiResult.items,
           constraints,
           count: 4,
-          language: lang
-        })
+          language: lang,
+        }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -344,13 +389,20 @@ export default function Page() {
           requestId: json?.requestId,
           sha: json?.sha,
           retry_after_seconds: json?.retry_after_seconds,
-          raw: json
+          raw: json,
         });
         return;
       }
 
-      const recipes: Recipe[] = Array.isArray(json?.recipes) ? json.recipes : [];
-      setRecipesResult({ ok: true, recipes, requestId: json?.requestId, sha: json?.sha });
+      const recipes: Recipe[] = Array.isArray(json?.recipes)
+        ? json.recipes
+        : [];
+      setRecipesResult({
+        ok: true,
+        recipes,
+        requestId: json?.requestId,
+        sha: json?.sha,
+      });
     } catch (err: any) {
       setRecipesResult({ ok: false, error: err?.message ?? "Network error." });
     } finally {
@@ -362,8 +414,14 @@ export default function Page() {
     if (!apiResult || apiResult.ok !== true) return [];
     const copy = [...apiResult.items];
     copy.sort((a, b) => {
-      const ac = typeof a.confidence === "number" && Number.isFinite(a.confidence) ? a.confidence : -1;
-      const bc = typeof b.confidence === "number" && Number.isFinite(b.confidence) ? b.confidence : -1;
+      const ac =
+        typeof a.confidence === "number" && Number.isFinite(a.confidence)
+          ? a.confidence
+          : -1;
+      const bc =
+        typeof b.confidence === "number" && Number.isFinite(b.confidence)
+          ? b.confidence
+          : -1;
       return bc - ac;
     });
     return copy;
@@ -380,19 +438,29 @@ export default function Page() {
       <div className="mx-auto max-w-6xl px-5 py-10">
         <header className="mb-8 flex items-start justify-between gap-6">
           <div>
-            <div className="text-xs font-semibold tracking-[0.18em] text-slate-500">{t(lang, "brand")}</div>
-            <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-900">{t(lang, "title")}</h1>
-            <p className="mt-2 max-w-xl text-sm text-slate-600">{t(lang, "subtitle")}</p>
+            <div className="text-xs font-semibold tracking-[0.18em] text-slate-500">
+              {t(lang, "brand")}
+            </div>
+            <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-900">
+              {t(lang, "title")}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-slate-600">
+              {t(lang, "subtitle")}
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.18)]" />
-              <span className="text-sm font-medium text-slate-700">{statusLabel}</span>
+              <span className="text-sm font-medium text-slate-700">
+                {statusLabel}
+              </span>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
-              <span className="text-xs font-semibold text-slate-600">{t(lang, "language_label")}</span>
+              <span className="text-xs font-semibold text-slate-600">
+                {t(lang, "language_label")}
+              </span>
               <select
                 value={lang}
                 onChange={(e) => {
@@ -415,12 +483,22 @@ export default function Page() {
           <div className="rounded-3xl border border-slate-200 bg-white/80 shadow-sm backdrop-blur">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>
-                <div className="text-base font-semibold text-slate-900">{t(lang, "image_card_title")}</div>
-                <div className="mt-1 text-sm text-slate-600">{t(lang, "image_card_subtitle")}</div>
+                <div className="text-base font-semibold text-slate-900">
+                  {t(lang, "image_card_title")}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {t(lang, "image_card_subtitle")}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <input ref={fileRef} type="file" accept="image/*" onChange={onPickFile} className="hidden" />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickFile}
+                  className="hidden"
+                />
 
                 <button
                   type="button"
@@ -433,9 +511,181 @@ export default function Page() {
 
                 <button
                   type="button"
-                  onClick={callFridg
+                  onClick={callFridge}
+                  disabled={apiBusy || busy || recipesBusy || !chosen.dataUrl}
+                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {apiBusy ? t(lang, "analyzing") : t(lang, "analyze")}
+                </button>
+              </div>
+            </div>
 
-cat > app/page.tsx <<'EOF'
-"use client";
+            <div className="px-6 py-6">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={busy || apiBusy || recipesBusy}
+                className="group relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 p-0 text-left shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-transparent to-emerald-50" />
+                </div>
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+                <div className="relative">
+                  {chosen.dataUrl ? (
+                    <img
+                      src={chosen.dataUrl}
+                      alt="Preview"
+                      className="h-[340px] w-full bg-white object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-[340px] flex-col items-center justify-center gap-3">
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
+                        {t(lang, "tap_to_choose")}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {t(lang, "formats_hint")}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {error ? (
+                <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                  <div className="text-sm font-semibold text-rose-900">
+                    {t(lang, "error_title")}
+                  </div>
+                  <div className="mt-1 text-sm text-rose-800">{error}</div>
+                </div>
+              ) : null}
+
+              {versionShort ? (
+                <div className="mt-4 text-xs text-slate-400">
+                  sha: {versionShort}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white/80 shadow-sm backdrop-blur">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <div className="text-base font-semibold text-slate-900">
+                {t(lang, "ingredients_title")}
+              </div>
+              <div className="mt-1 text-sm text-slate-600">
+                {t(lang, "ingredients_subtitle")}
+              </div>
+            </div>
+
+            <div className="px-6 py-6">
+              {!apiResult ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {t(lang, "no_analysis_title")}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-600">
+                    {t(lang, "no_analysis_subtitle")}
+                  </div>
+                </div>
+              ) : apiResult.ok === false ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4">
+                  <div className="text-sm font-semibold text-rose-900">
+                    {apiResult.error}
+                  </div>
+                </div>
+              ) : sortedItems.length ? (
+                <div className="space-y-2">
+                  {sortedItems.map((it, idx) => (
+                    <div
+                      key={`${it.name}-${idx}`}
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                    >
+                      <div className="text-sm font-semibold text-slate-900">
+                        {it.name}
+                      </div>
+                      {typeof it.confidence === "number" ? (
+                        <div className="text-xs font-semibold text-slate-500">
+                          {Math.round(it.confidence * 100)}%
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {t(lang, "no_items_title")}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-600">
+                    {t(lang, "no_items_subtitle")}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                <div className="text-base font-semibold text-slate-900">
+                  {t(lang, "recipes_title")}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {t(lang, "recipes_subtitle")}
+                </div>
+
+                <textarea
+                  value={constraints}
+                  onChange={(e) => setConstraints(e.target.value)}
+                  placeholder={t(lang, "constraints_placeholder")}
+                  className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
+                  rows={3}
+                />
+
+                <button
+                  type="button"
+                  onClick={callRecipes}
+                  disabled={recipesBusy || apiBusy || busy}
+                  className="mt-3 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {recipesBusy
+                    ? t(lang, "generating")
+                    : t(lang, "make_recipes")}
+                </button>
+
+                {recipesResult ? (
+                  recipesResult.ok === false ? (
+                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                      <div className="text-sm font-semibold text-rose-900">
+                        {recipesResult.error}
+                      </div>
+                    </div>
+                  ) : recipesResult.recipes?.length ? (
+                    <div className="mt-4 space-y-3">
+                      {recipesResult.recipes.map((r, idx) => (
+                        <div
+                          key={`${r.title}-${idx}`}
+                          className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                        >
+                          <div className="text-base font-semibold text-slate-900">
+                            {r.title}
+                          </div>
+                          {r.summary ? (
+                            <div className="mt-1 text-sm text-slate-600">
+                              {r.summary}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null
+                ) : null}
+
+                <div className="mt-4 text-xs text-slate-400">
+                  {t(lang, "api_footer")}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
