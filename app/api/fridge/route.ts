@@ -28,19 +28,54 @@ function getClientIp(req: Request): string {
   return "unknown";
 }
 
+function genRequestId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function safeJsonParse(s: string): any | null {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
 const RATE_LIMIT_PER_IP_PER_UTC_DAY = 200;
-const counters = new Map<string, number>();
+const BURST_LIMIT_PER_IP_PER_MINUTE = 30;
+
+const dayCounters = new Map<string, number>();
+const minuteCounters = new Map<string, { minuteKey: string; count: number }>();
 
 function rateLimitOrThrow(req: Request) {
   const ip = getClientIp(req);
-  const key = `${ip}:${getUtcDayKey()}`;
-  const n = (counters.get(key) ?? 0) + 1;
-  counters.set(key, n);
-  if (n > RATE_LIMIT_PER_IP_PER_UTC_DAY) {
-    const err = new Error("Rate limit exceeded");
+  const dayKey = `${ip}:${getUtcDayKey()}`;
+  const nDay = (dayCounters.get(dayKey) ?? 0) + 1;
+  dayCounters.set(dayKey, nDay);
+  if (nDay > RATE_LIMIT_PER_IP_PER_UTC_DAY) {
+    const err = new Error("Rate limit exceeded (per day)");
     (err as any).status = 429;
+    (err as any).retry_after_seconds = 60 * 60;
     throw err;
   }
+
+  const d = new Date();
+  const minuteKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    d.getUTCDate()
+  ).padStart(2, "0")}T${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+
+  const mKey = `${ip}:${minuteKey}`;
+  const cur = minuteCounters.get(mKey);
+  const nMin = (cur?.count ?? 0) + 1;
+  minuteCounters.set(mKey, { minuteKey, count: nMin });
+
+  if (nMin > BURST_LIMIT_PER_IP_PER_MINUTE) {
+    const err = new Error("Rate limit exceeded (per minute)");
+    (err as any).status = 429;
+    (err as any).retry_after_seconds = 60;
+    throw err;
+  }
+
+  return { ip, dayCount: nDay, minuteCount: nMin };
 }
 
 function parseDataUrl(dataUrl: string): { mediaType: string; base64: string } {
@@ -121,42 +156,64 @@ function normalizeItems(obj: any): Array<{ name: string; kind?: string; contents
       const name = clean(it.name);
       const kind = typeof it.kind === "string" ? clean(it.kind) : undefined;
       const contents = typeof it.contents === "string" ? clean(it.contents) : undefined;
-      const c =
-        typeof it.confidence === "number" && Number.isFinite(it.confidence) ? it.confidence : undefined;
+      const c = typeof it.confidence === "number" && Number.isFinite(it.confidence) ? it.confidence : undefined;
       if (name) out.push({ name, kind, contents, confidence: c });
     }
   }
   return out;
 }
 
+function getVersion(): string {
+  return (
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+    process.env.COMMIT_SHA ||
+    "unknown"
+  );
+}
+
+function jsonNoStore(body: any, init?: { status?: number }) {
+  const res = NextResponse.json(body, { status: init?.status ?? 200 });
+  res.headers.set("cache-control", "no-store");
+  return res;
+}
+
 export async function GET() {
-  return NextResponse.json({ ok: true, route: "/api/fridge" });
+  return jsonNoStore({ ok: true, route: "/api/fridge", version: getVersion() });
 }
 
 export async function POST(req: Request) {
-  try {
-    rateLimitOrThrow(req);
+  const requestId = genRequestId();
+  const started = Date.now();
 
+  try {
+    const rate = rateLimitOrThrow(req);
+    const ua = req.headers.get("user-agent") || "unknown";
     const apiKey = process.env.ANTHROPIC_API_KEY;
+
     if (!apiKey) {
-      return NextResponse.json({ ok: false, error: "Missing ANTHROPIC_API_KEY" }, { status: 500 });
+      return jsonNoStore({ ok: false, error: "Missing ANTHROPIC_API_KEY", requestId, version: getVersion() }, { status: 500 });
     }
 
-    const body = (await req.json()) as Body;
+    const bodyText = await req.text();
+    const body = (safeJsonParse(bodyText) ?? {}) as Body;
 
     const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUrl, body.base64);
     if (!candidate) {
-      return NextResponse.json({ ok: false, error: "Missing image (dataURL) in request body" }, { status: 400 });
+      return jsonNoStore(
+        { ok: false, error: "Missing image (dataURL) in request body", requestId, version: getVersion() },
+        { status: 400 }
+      );
     }
 
+    const bytesIn = Buffer.byteLength(candidate, "utf8");
     const { mediaType, base64 } = parseDataUrl(candidate);
 
-    const prompt = "Analysér hele scenen i billedet (ikke kun ingredienser). Returnér KUN JSON iht. schemaet. Inkludér både: (1) Ingredienser/madvarer, (2) Beholdere/emballage (gryde, boks, glas, flaske, bøtte, dåse, bakke, pose), og (3) hvis du kan se indholdet i en beholder, så angiv contents (fx \"glas\" + contents: \"syltetøj\"). Hvis indholdet ikke kan afgøres, skriv contents: \"ukendt\" og sæt lavere confidence. Ingen forklaring, ingen markdown, ingen ekstra tekst.";
+    const prompt =
+      'Analysér hele scenen i billedet (ikke kun ingredienser). Returnér KUN JSON iht. schemaet. Inkludér både: (1) Ingredienser/madvarer, (2) Beholdere/emballage (gryde, boks, glas, flaske, bøtte, dåse, bakke, pose), og (3) hvis du kan se indholdet i en beholder, så angiv contents (fx "glas" + contents: "syltetøj"). Hvis indholdet ikke kan afgøres, skriv contents: "ukendt" og sæt lavere confidence. Ingen forklaring, ingen markdown, ingen ekstra tekst.';
 
-    // Brug en moderne model (3.5 sonnet er retired)
     const model = "claude-sonnet-4-5";
 
-    // Anthropic structured outputs: output_config.format.schema (IKKE json_schema)
     const schema = {
       type: "object",
       additionalProperties: false,
@@ -168,10 +225,7 @@ export async function POST(req: Request) {
             additionalProperties: false,
             properties: {
               name: { type: "string" },
-              kind: {
-                type: "string",
-                enum: ["ingredient", "container", "package", "drink", "unknown"]
-              },
+              kind: { type: "string", enum: ["ingredient", "container", "package", "drink", "unknown"] },
               contents: { type: "string" },
               confidence: { type: "number" }
             },
@@ -188,19 +242,13 @@ export async function POST(req: Request) {
         "content-type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
-        // Nogle miljøer kræver beta header for structured outputs
         "anthropic-beta": "structured-outputs-2025-11-13"
       },
       body: JSON.stringify({
         model,
         max_tokens: 700,
         temperature: 0,
-        output_config: {
-          format: {
-            type: "json_schema",
-            schema
-          }
-        },
+        output_config: { format: { type: "json_schema", schema } },
         messages: [
           {
             role: "user",
@@ -215,49 +263,81 @@ export async function POST(req: Request) {
 
     const raw = await anthropicRes.text();
 
+    const logLine = {
+      at: "api.fridge",
+      requestId,
+      ip: rate.ip,
+      ua,
+      status: anthropicRes.status,
+      ok: anthropicRes.ok,
+      bytesIn,
+      mediaType,
+      model,
+      ms: Date.now() - started
+    };
+    console.log(JSON.stringify(logLine));
+
     if (!anthropicRes.ok) {
-      return NextResponse.json(
-        { ok: false, error: `Anthropic error ${anthropicRes.status}`, raw },
+      return jsonNoStore(
+        {
+          ok: false,
+          error: `Anthropic error ${anthropicRes.status}`,
+          requestId,
+          version: getVersion(),
+          meta: { model, bytesIn, rate },
+          raw
+        },
         { status: anthropicRes.status }
       );
     }
 
-    let jsonTop: any;
-    try {
-      jsonTop = JSON.parse(raw);
-    } catch {
-      const extracted = extractJsonObject(raw);
-      try {
-        const parsed = JSON.parse(extracted);
-        return NextResponse.json({ ok: true, items: normalizeItems(parsed), raw: parsed });
-      } catch {
-        return NextResponse.json(
-          { ok: false, error: "Anthropic response was not JSON", raw },
-          { status: 502 }
-        );
-      }
-    }
-
-    const textBlocks: string[] = Array.isArray(jsonTop?.content)
-      ? jsonTop.content.filter((b: any) => b?.type === "text" && typeof b?.text === "string").map((b: any) => b.text)
-      : [];
-
-    const combined = textBlocks.join("\n").trim();
-    const extracted = extractJsonObject(combined || "");
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(extracted);
-    } catch {
-      return NextResponse.json(
-        { ok: false, error: "Model did not return parseable JSON", raw: combined, top: jsonTop },
+    const jsonTop = safeJsonParse(raw);
+    if (!jsonTop) {
+      return jsonNoStore(
+        { ok: false, error: "Anthropic response was not JSON", requestId, version: getVersion(), meta: { model, bytesIn, rate }, raw },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ ok: true, items: normalizeItems(parsed), raw: parsed });
+    const textBlocks: string[] = Array.isArray((jsonTop as any)?.content)
+      ? (jsonTop as any).content
+          .filter((b: any) => b?.type === "text" && typeof b?.text === "string")
+          .map((b: any) => b.text)
+      : [];
+
+    const combined = textBlocks.join("\n").trim();
+    const extracted = extractJsonObject(combined || "");
+    const parsed = safeJsonParse(extracted);
+
+    if (!parsed) {
+      return jsonNoStore(
+        { ok: false, error: "Model did not return parseable JSON", requestId, version: getVersion(), meta: { model, bytesIn, rate }, raw: combined, top: jsonTop },
+        { status: 502 }
+      );
+    }
+
+    const items = normalizeItems(parsed);
+
+    return jsonNoStore({
+      ok: true,
+      items,
+      requestId,
+      version: getVersion(),
+      meta: {
+        model,
+        bytesIn,
+        rate
+      }
+    });
   } catch (e: any) {
     const status = typeof e?.status === "number" ? e.status : 500;
-    return NextResponse.json({ ok: false, error: e?.message ?? "Server error" }, { status });
+    const retryAfter = typeof e?.retry_after_seconds === "number" ? e.retry_after_seconds : undefined;
+
+    const body: any = { ok: false, error: e?.message ?? "Server error", requestId, version: getVersion() };
+    if (retryAfter) body.retry_after_seconds = retryAfter;
+
+    const res = jsonNoStore(body, { status });
+    if (retryAfter) res.headers.set("retry-after", String(retryAfter));
+    return res;
   }
 }
