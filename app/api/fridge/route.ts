@@ -198,7 +198,25 @@ export async function POST(req: Request) {
     const bodyText = await req.text();
     const body = (safeJsonParse(bodyText) ?? {}) as Body;
 
-    const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUrl, body.base64);
+    
+    const languageRaw = typeof (body as any)?.language === "string" ? (body as any).language : "da";
+    const allowedLangs = new Set(["da","no","sv","de","en","fr","it","es","pt","ar"]);
+    const lang = (allowedLangs.has(languageRaw) ? languageRaw : "da") as "da"|"no"|"sv"|"de"|"en"|"fr"|"it"|"es"|"pt"|"ar";
+
+    const langLabel: Record<typeof lang, string> = {
+      da: "Danish",
+      no: "Norwegian",
+      sv: "Swedish",
+      de: "German",
+      en: "English",
+      fr: "French",
+      it: "Italian",
+      es: "Spanish",
+      pt: "Portuguese",
+      ar: "Arabic",
+    };
+    const targetLanguage = langLabel[lang] || "Danish";
+const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUrl, body.base64);
     if (!candidate) {
       return jsonNoStore(
         { ok: false, error: "Missing image (dataURL) in request body", requestId, version: getVersion() },
@@ -254,7 +272,7 @@ export async function POST(req: Request) {
             role: "user",
             content: [
               { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-              { type: "text", text: prompt }
+              { type: "text", text: `Ingredient names MUST be in ${{targetLanguage}}.\n` + (prompt)}
             ]
           }
         ]
