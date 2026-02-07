@@ -79,12 +79,19 @@ function dataUrlByteSize(dataUrl: string): number {
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Kunne ikke læse filen (FileReader fejl)."));
-    reader.onload = () => resolve(String(reader.result));
-    reader.readAsDataURL(file);
-  });
+  return (async () => {
+    // Safari-stabil: undgå FileReader.readAsDataURL DOMExceptions
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    const b64 = btoa(binary);
+    const mime = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
+    return `data:${mime};base64,${b64}`;
+  })() as any;
 }
 
 async function downscaleToJpegDataUrl(
