@@ -1,5 +1,33 @@
 "use client";
 
+async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): Promise<string> {
+  try {
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("canvas.toBlob returned null"))),
+        "image/jpeg",
+        quality
+      );
+    });
+
+    const buf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+
+    const b64 = btoa(binary);
+    return `data:image/jpeg;base64,${b64}`;
+  } catch (e) {
+    console.error("canvasToJpegDataUrl failed:", e);
+    return "";
+  }
+}
+
+
 function safeToDataURL(canvas: HTMLCanvasElement, type: string, quality?: number): string {
   try {
     // Safari/WebKit kan kaste DOMException: "The string did not match the expected pattern"
@@ -123,7 +151,8 @@ async function downscaleToJpegDataUrl(
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, 0, 0, targetW, targetH);
 
-  const jpegDataUrl = safeToDataURL(canvas, "image/jpeg", opts.quality);
+  const jpegDataUrl = await canvasToJpegDataUrl(canvas, opts.quality);
+
   return { jpegDataUrl, width: targetW, height: targetH };
 }
 
