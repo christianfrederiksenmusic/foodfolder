@@ -43,3 +43,4 @@ app/page.tsx.bak.*
 
 # Local backup files
 *.bak.*
+_backup_ui/
