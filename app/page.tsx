@@ -295,7 +295,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       setJpegDataUrl(jpg);
       setJpegDims({ w: width, h: height });
     } catch (err: any) {
-      setError(err?.message ?? "Ukendt fejl ved billedbehandling.");
+      setError(formatErr(err));
       setOriginalDataUrl("");
       setJpegDataUrl("");
       setJpegDims(null);
