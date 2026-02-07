@@ -353,14 +353,22 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
     try {
       const orig = await fileToDataUrl(file);
       setOriginalDataUrl(orig);
+      try {
 
-      const { jpegDataUrl: jpg, width, height } = await downscaleFileToJpegDataUrl(file, {
-        maxDim: MAX_DIM,
-        quality: JPEG_QUALITY,
-      });
+            const { jpegDataUrl: jpg, width, height } = await downscaleFileToJpegDataUrl(file, {
+              maxDim: MAX_DIM,
+              quality: JPEG_QUALITY,
+            });
 
-      setJpegDataUrl(jpg);
-      setJpegDims({ w: width, h: height });
+            setJpegDataUrl(jpg);
+            setJpegDims({ w: width, h: height });
+      } catch (e) {
+        // Safari kan fejle på WEBP decode/preview/downscale. Fortsæt med original i stedet.
+        console.warn('Downscale/preview failed; using originalDataUrl:', e);
+        setJpegDataUrl('');
+        setJpegDims(null);
+      }
+
     } catch (err: any) {
       setError(formatErr(err));
       setOriginalDataUrl("");
