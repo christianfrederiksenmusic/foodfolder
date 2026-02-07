@@ -46,15 +46,8 @@ async function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality = 0.82): P
 
     const buf = await blob.arrayBuffer();
     const bytes = new Uint8Array(buf);
-
-    let binary = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
-
     const b64 = uint8ToBase64(bytes);
-return `data:image/jpeg;base64,${b64}`;
+    return `data:image/jpeg;base64,${b64}`;
   } catch (e) {
     console.error("canvasToJpegDataUrl failed:", e);
     return "";
@@ -141,19 +134,11 @@ function dataUrlByteSize(dataUrl: string): number {
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
-  return (async () => {
-    // Safari-stabil: undgå FileReader.readAsDataURL DOMExceptions
-    const buf = await file.arrayBuffer();
-    const bytes = new Uint8Array(buf);
-    let binary = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
-    const b64 = uint8ToBase64(bytes);
-const mime = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
-    return `data:${mime};base64,${b64}`;
-  })() as any;
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const b64 = uint8ToBase64(bytes);
+  const mime = file.type && file.type.includes("/") ? file.type : "application/octet-stream";
+  return `data:${mime};base64,${b64}`;
 }
 
 async function downscaleToJpegDataUrl(
