@@ -628,6 +628,24 @@ export default function Page() {
                       Skriv constraints og generér forslag.
                     </div>
 
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-900">
+                        Opskrifts-sprog
+                      </div>
+
+                      <select
+                        value={recipeLang}
+                        onChange={(e) =>
+                          setRecipeLang(e.target.value === "en" ? "en" : "da")
+                        }
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
+                      >
+                        <option value="da">Dansk</option>
+
+                        <option value="en">English</option>
+                      </select>
+                    </div>
+
                     <textarea
                       value={constraints}
                       onChange={(e) => setConstraints(e.target.value)}
