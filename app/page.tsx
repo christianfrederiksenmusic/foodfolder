@@ -189,7 +189,9 @@ export default function Page() {
 
   const [apiBusy, setApiBusy] = useState(false);
   const [apiResult, setApiResult] = useState<FridgeResult | null>(null);
-  const [error, setError] = useState("");
+  
+  const [itemsLang, setItemsLang] = useState<Lang>("da");
+const [error, setError] = useState("");
 
   const [recipesBusy, setRecipesBusy] = useState(false);
   const [recipesResult, setRecipesResult] = useState<RecipesResult | null>(
@@ -208,7 +210,42 @@ export default function Page() {
     try {
       const saved = localStorage.getItem("ff_lang") as Lang | null;
       if (saved && LANGS.some((x) => x.code === saved)) setLang(saved);
-    } catch {}
+    
+
+  useEffect(() => {
+    if (!apiResult || apiResult.ok !== true || apiResult.items.length === 0) return;
+    if (itemsLang === lang) return;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/translate-items", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            language: lang,
+            items: apiResult.items.map((it: any) => it?.name ?? ""),
+          }),
+        });
+
+        const json = await res.json().catch(() => ({} as any));
+        if (!json || json.ok !== true || !Array.isArray(json.items)) return;
+
+        setApiResult((prev: any) => {
+          if (!prev || prev.ok !== true || !Array.isArray(prev.items)) return prev;
+          const mapped = prev.items.map((it: any, i: number) => ({
+            ...it,
+            name: (json.items[i] ?? it.name),
+          }));
+          return { ...prev, items: mapped };
+        });
+
+        setItemsLang(lang);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [lang, apiResult, itemsLang]);
+} catch {}
   }, []);
 
   useEffect(() => {
@@ -360,7 +397,9 @@ export default function Page() {
         sha: json?.sha,
         meta: json?.meta,
       });
-    } catch (err: any) {
+    
+      setItemsLang(lang);
+} catch (err: any) {
       setApiResult({ ok: false, error: err?.message ?? "Network error." });
     } finally {
       setApiBusy(false);
