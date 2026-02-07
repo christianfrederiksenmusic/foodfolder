@@ -173,6 +173,13 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
   const [apiResult, setApiResult] = useState<ApiResponse>(null);
   const [error, setError] = useState("");
 
+  function debugSetError(label: string, err: any) {
+    const callsite = new Error("CALLSITE").stack || "";
+    const msg = `[${label}] ` + formatErr(err) + (callsite ? "\n\n" + callsite : "");
+    console.error("DEBUG_ERROR:", msg, err);
+    setError(msg);
+  }
+
   // Global error catcher (Safari giver ellers kun "The string did not match the expected pattern.")
   React.useEffect(() => {
     const onError = (event: any) => {
@@ -358,7 +365,14 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={onPickFile}
+            onChange={async (e) => {
+  try {
+    const r = onPickFile(e);
+    if (r && typeof (r as any).then === "function") await r;
+  } catch (err) {
+    debugSetError("onChange:onPickFile", err);
+  }
+}}
             style={{ position: "absolute", left: -99999, width: 1, height: 1, opacity: 0 }}
           />
 
