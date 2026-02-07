@@ -1,5 +1,17 @@
 "use client";
 
+function safeToDataURL(canvas: HTMLCanvasElement, type: string, quality?: number): string {
+  try {
+    // Safari/WebKit kan kaste DOMException: "The string did not match the expected pattern"
+    // især ved visse encode-paths. Vi returnerer tom string og lader caller ignorere kandidaten.
+    return quality == null ? safeToDataURL(canvas, type) : safeToDataURL(canvas, type, quality);
+  } catch (e) {
+    console.error("safeToDataURL failed:", e);
+    return "";
+  }
+}
+
+
 function formatErr(e: any): string {
   try {
     if (typeof e === "string") return e;
@@ -104,7 +116,7 @@ async function downscaleToJpegDataUrl(
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, 0, 0, targetW, targetH);
 
-  const jpegDataUrl = canvas.toDataURL("image/jpeg", opts.quality);
+  const jpegDataUrl = safeToDataURL(canvas, "image/jpeg", opts.quality);
   return { jpegDataUrl, width: targetW, height: targetH };
 }
 
