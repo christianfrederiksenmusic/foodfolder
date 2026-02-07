@@ -141,6 +141,54 @@ async function fileToDataUrl(file: File): Promise<string> {
   return `data:${mime};base64,${b64}`;
 }
 
+async function downscaleFileToJpegDataUrl(
+  file: File,
+  opts: { maxDim: number; quality: number }
+): Promise<{ jpegDataUrl: string; width: number; height: number }> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    const url = URL.createObjectURL(file);
+
+    i.onload = () => {
+      try { URL.revokeObjectURL(url); } catch {}
+      resolve(i);
+    };
+    i.onerror = () => {
+      try { URL.revokeObjectURL(url); } catch {}
+      reject(new Error("Kunne ikke indlæse fil i <img> via objectURL (image decode fejl)."));
+    };
+
+    try {
+      i.src = url;
+    } catch (e: any) {
+      try { URL.revokeObjectURL(url); } catch {}
+      reject(e);
+    }
+  });
+
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+
+  const scale = Math.min(1, opts.maxDim / Math.max(w, h));
+  const targetW = Math.max(1, Math.round(w * scale));
+  const targetH = Math.max(1, Math.round(h * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context fejlede.");
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  const jpegDataUrl = await canvasToJpegDataUrl(canvas, opts.quality);
+  return { jpegDataUrl, width: targetW, height: targetH };
+}
+
+
 async function downscaleToJpegDataUrl(
   dataUrl: string,
   opts: { maxDim: number; quality: number }
@@ -306,7 +354,7 @@ const [pickedFileInfo, setPickedFileInfo] = useState<{
       const orig = await fileToDataUrl(file);
       setOriginalDataUrl(orig);
 
-      const { jpegDataUrl: jpg, width, height } = await downscaleToJpegDataUrl(orig, {
+      const { jpegDataUrl: jpg, width, height } = await downscaleFileToJpegDataUrl(file, {
         maxDim: MAX_DIM,
         quality: JPEG_QUALITY,
       });
