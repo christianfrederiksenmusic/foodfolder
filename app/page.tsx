@@ -1,5 +1,23 @@
 "use client";
 
+function formatErr(e: any): string {
+  try {
+    if (typeof e === "string") return e;
+    const name = e?.name ? String(e.name) : "Error";
+    const msg = e?.message ? String(e.message) : String(e);
+    const code = e?.code != null ? `\ncode: ${String(e.code)}` : "";
+    const stack = e?.stack ? `\n${String(e.stack)}` : "";
+    const extra =
+      !stack && e && typeof e === "object"
+        ? `\nkeys: ${Object.keys(e).join(", ")}`
+        : "";
+    return `${name}: ${msg}${code}${stack}${extra}`;
+  } catch (x: any) {
+    return `Error: ${String(e)}`;
+  }
+}
+
+
 function sanitizeDataUrl(u: string): string {
   return (u ?? "").trim().replace(/\s+/g, "");
 }
