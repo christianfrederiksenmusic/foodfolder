@@ -538,22 +538,6 @@ export default function Page() {
                 </div>
               </button>
 
-              <div className="mt-5 flex flex-col gap-2">
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-sm text-slate-600">Valgt fil</div>
-                  <div className="text-sm font-medium text-slate-900">
-                    {pickedInfo ? pickedInfo.name : "Ingen"}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-sm text-slate-600">Payload</div>
-                  <div className="text-sm font-medium text-slate-900">
-                    {chosen.dataUrl ? fmtKB(chosenBytes) : "—"}
-                  </div>
-                </div>
-              </div>
-
               {error ? (
                 <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
                   <div className="text-sm font-semibold text-rose-900">
