@@ -272,7 +272,7 @@ const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUr
             role: "user",
             content: [
               { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-              { type: "text", text: `Ingredient names MUST be in ${{targetLanguage}}.\n` + (prompt)}
+              { type: "text", text: `Ingredient names MUST be in ${targetLanguage}.\n` + (prompt)}
             ]
           }
         ]
