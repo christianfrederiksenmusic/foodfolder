@@ -226,10 +226,18 @@ const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUr
 
     const bytesIn = Buffer.byteLength(candidate, "utf8");
     const { mediaType, base64 } = parseDataUrl(candidate);
+    const loanwordRule =
+      lang === "da"
+        ? "For Danish: use native Danish grocery words; avoid Swedish/Norwegian loanwords like 'burk'.\n"
+        : "";
 
     const prompt =
-      'Analysér hele scenen i billedet (ikke kun ingredienser). Returnér KUN JSON iht. schemaet. Inkludér både: (1) Ingredienser/madvarer, (2) Beholdere/emballage (gryde, boks, glas, flaske, bøtte, dåse, bakke, pose), og (3) hvis du kan se indholdet i en beholder, så angiv contents (fx "glas" + contents: "syltetøj"). Hvis indholdet ikke kan afgøres, skriv contents: "ukendt" og sæt lavere confidence. Ingen forklaring, ingen markdown, ingen ekstra tekst.';
-
+      "Analyze the entire scene in the image (not only ingredients). Return ONLY JSON that matches the schema.\n"
+      + "Include: (1) ingredients/groceries, (2) containers/packaging (pot, box, jar, bottle, tub, can, tray, bag), and (3) if you can see the contents of a container, fill `contents` (e.g. name: 'jar', contents: 'jam').\n"
+      + "If contents cannot be determined, set contents: 'unknown' and lower confidence.\n"
+      + "No explanations, no markdown, no extra text.\n"
+      + "All text fields (name, contents) MUST be in " + targetLanguage + ".\n"
+      + loanwordRule;
     const model = "claude-sonnet-4-5";
 
     const schema = {
