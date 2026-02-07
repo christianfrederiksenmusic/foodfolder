@@ -207,6 +207,7 @@ export default function Page() {
     "hurtigt, få ingredienser, ingen fancy udstyr",
   );
 
+  const [recipeLang, setRecipeLang] = useState<"da" | "en">("da");
   const [sha, setSha] = useState<string>("");
 
   const MAX_DIM = 1280;
@@ -380,6 +381,7 @@ export default function Page() {
           items: apiResult.items,
           constraints,
           count: 4,
+          language: recipeLang,
         }),
       });
 
