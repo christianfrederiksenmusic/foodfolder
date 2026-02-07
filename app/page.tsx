@@ -218,6 +218,14 @@ export default function Page() {
   }, [lang]);
 
   useEffect(() => {
+    // Hvis vi tidligere satte placeholder-teksten som value, så ryd den.
+    if (constraints === t("da", "constraints_placeholder")) {
+      setConstraints("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     let dead = false;
     fetch("/api/version")
       .then((r) => r.json())
