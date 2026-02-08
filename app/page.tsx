@@ -6,6 +6,7 @@ import { LANGS, type Lang, t } from "./i18n";
 import PantryModal from "./components/PantryModal";
 
 import OffersPanel from "@/app/components/OffersPanel";
+import StoreGuidePanel from "@/app/components/StoreGuidePanel";
 
 
 function deriveOfferQueries(input: any): string[] {
@@ -414,8 +415,11 @@ const fileRef = useRef<HTMLInputElement | null>(null);
 
   // Confirm layer (user edits this list; recipes are generated ONLY from here)
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
+  // Shopping list (things you plan to buy; NOT things you have)
+  const [shoppingItems, setShoppingItems] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [newConfirmedItem, setNewConfirmedItem] = useState<string>("");
+  const [newShoppingItem, setNewShoppingItem] = useState<string>("");
 
   const [itemsLang, setItemsLang] = useState<Lang>("da");
 const [error, setError] = useState("");
@@ -425,12 +429,33 @@ const [error, setError] = useState("");
     null,
   );
 
+    const missingFromRecipes = useMemo(() => {
+    if (!recipesResult || (recipesResult as any).ok !== true) return [] as string[];
+    const recs = Array.isArray((recipesResult as any).recipes) ? (recipesResult as any).recipes : [];
+    const out: string[] = [];
+    for (const r of recs) {
+      const miss = Array.isArray((r as any)?.missing_items) ? (r as any).missing_items : [];
+      for (const m of miss) {
+        if (typeof m === "string") out.push(m);
+        else if (m && typeof m === "object") {
+          if (typeof (m as any).item === "string") out.push((m as any).item);
+          else if (typeof (m as any).name === "string") out.push((m as any).name);
+        }
+      }
+    }
+    return dedupeCaseInsensitive(out);
+  }, [recipesResult]);
+
+  // 'Mangler i dag' = what recipes say you lack + whatever you manually add to shopping list
+  const missingToday = useMemo(() => {
+    return dedupeCaseInsensitive([...(missingFromRecipes || []), ...(shoppingItems || [])]);
+  }, [missingFromRecipes, shoppingItems]);
+
   const offerQueries = useMemo(() => {
-    // Primært: opskriftens missing_items (hvis backend leverer dem)
-    // Fallback: deriveOfferQueries prøver også at falde tilbage til ingredienser.
-    return deriveOfferQueries({ recipesResult, fridge: confirmedItems });
-  }, [recipesResult, confirmedItems]);
-  const [constraints, setConstraints] = useState<string>(
+    // Offers should be driven by what you need to buy (missingToday)
+    return deriveOfferQueries({ missing: missingToday, recipesResult });
+  }, [recipesResult, missingToday]);
+const [constraints, setConstraints] = useState<string>(
     t("da", "constraints_placeholder"),
   );
 
@@ -753,6 +778,25 @@ setItemsLang(lang);
     setNewConfirmedItem("");
   }
 
+  function updateShoppingAt(index: number, value: string) {
+    setShoppingItems((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return dedupeCaseInsensitive(next);
+    });
+  }
+
+  function removeShoppingAt(index: number) {
+    setShoppingItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addShopping() {
+    const v = normalizeItem(newShoppingItem);
+    if (!v) return;
+    setShoppingItems((prev) => dedupeCaseInsensitive([...prev, v]));
+    setNewShoppingItem("");
+  }
+
 
   const sortedItems = useMemo(() => {
     if (!apiResult || apiResult.ok !== true) return [];
@@ -920,9 +964,31 @@ setItemsLang(lang);
               </button>
 
 
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>offerQueries: {JSON.stringify(offerQueries)}</div>
 
 
+
+              <div className="mt-4 w-full rounded-2xl border border-black/10 bg-white/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Mangler i dag</h2>
+                    <p className="text-sm opacity-70">
+                      {missingToday.length ? `Liste: ${missingToday.join(", ")}` : "Ingen mangler endnu"}
+                    </p>
+                  </div>
+                </div>
+
+                {missingToday.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {missingToday.map((m) => (
+                      <span key={m} className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs opacity-80">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <StoreGuidePanel queries={missingToday} />
 
               <OffersPanel queries={offerQueries} />
 
@@ -1022,7 +1088,7 @@ setItemsLang(lang);
                           type="button"
                           className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800 hover:bg-slate-50"
                           onClick={() => {
-                            setConfirmedItems((prev) => dedupeCaseInsensitive([...prev, sug]));
+                            setShoppingItems((prev) => dedupeCaseInsensitive([...prev, sug]));
                             setSuggestions((prev) => prev.filter((x) => x !== sug));
                           }}
                           title={t(lang, "add_suggestion")}
@@ -1034,6 +1100,82 @@ setItemsLang(lang);
                     </div>
                   </div>
                 ) : null}
+
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <div className="text-sm font-semibold text-slate-900">Indkøbsliste</div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    Ting du vil købe (påvirker butiksguidning/tilbud - men ikke hvad der er i dit køleskab).
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {shoppingItems.length ? (
+                      shoppingItems.map((name, idx) => (
+                        <div key={`${name}-${idx}`} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                          <input
+                            className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                            value={name}
+                            onChange={(e) => updateShoppingAt(idx, e.target.value)}
+                            onBlur={(e) => updateShoppingAt(idx, e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="h-9 w-9 rounded-xl border border-slate-200 bg-white text-lg font-semibold text-slate-600 hover:bg-slate-50"
+                            onClick={() => removeShoppingAt(idx)}
+                            aria-label="Slet"
+                            title="Slet"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                        Ingen varer i indkøbsliste endnu.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      value={newShoppingItem}
+                      onChange={(e) => setNewShoppingItem(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addShopping();
+                        }
+                      }}
+                      placeholder="Tilføj vare (fx mælk)"
+                    />
+                    <button
+                      type="button"
+                      className="h-10 whitespace-nowrap rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                      onClick={addShopping}
+                    >
+                      Tilføj
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <div className="text-sm font-semibold text-slate-900">Mangler i dag</div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    Udledt af opskrifternes missing-items + din indkøbsliste.
+                  </div>
+                  {missingToday.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {missingToday.map((m) => (
+                        <span key={m} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800">
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-sm text-slate-600">Ingen mangler endnu.</div>
+                  )}
+                </div>
 
 {confirmedItems.length ? (
                     confirmedItems.map((name, idx) => (
