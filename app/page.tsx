@@ -5,6 +5,128 @@ import { LANGS, type Lang, t } from "./i18n";
 
 import PantryModal from "./components/PantryModal";
 
+import OffersPanel from "@/app/components/OffersPanel";
+
+
+function deriveOfferQueries(input: any): string[] {
+  // Input can be: { missing }, { recipes }, { fridge }, etc.
+  // We try to extract "missing ingredients" first; fallback to recipe ingredients.
+  const maxQueries = 6;
+
+  const norm = (x: string) =>
+    x
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/[0-9]+([.,][0-9]+)?/g, " ")
+      .replace(/\b(g|kg|ml|l|stk|stk\.|spsk|tsk|dl|cl)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const asStringList = (v: any): string[] => {
+    if (!v) return [];
+    if (Array.isArray(v)) {
+      const out: string[] = [];
+      for (const it of v) {
+        if (typeof it === "string") out.push(it);
+        else if (it && typeof it === "object") {
+          if (typeof it.item === "string") out.push(it.item);
+          if (typeof it.name === "string") out.push(it.name);
+          else if (typeof it.title === "string") out.push(it.title);
+          else if (typeof it.ingredient === "string") out.push(it.ingredient);
+          else if (typeof it.text === "string") out.push(it.text);
+        }
+      }
+      return out;
+    }
+    // Sometimes it's an object with .data
+    if (v && typeof v === "object" && Array.isArray(v.data)) return asStringList(v.data);
+    return [];
+  };
+
+  const pickMissing = (obj: any): string[] => {
+    if (!obj) return [];
+    const root = Array.isArray(obj) ? obj[0] : obj;
+    // Common shapes:
+    // obj.missing, obj.missingIngredients, obj.mangler, obj.shoppingList.missing, obj.recipe.missingIngredients
+    const keys = [
+      "missing",
+      "missingIngredients",
+      "missing_items",
+      "missingList",
+      "missingItems",
+      "mangler",
+      "manglerListe",
+    ];
+    for (const k of keys) {
+      const got = asStringList(root?.[k]);
+      if (got.length) return got;
+    }
+    const got2 = asStringList(root?.shoppingList?.missing);
+    if (got2.length) return got2;
+    const got3 = asStringList(root?.recipe?.missingIngredients);
+    if (got3.length) return got3;
+    return [];
+  };
+
+  const pickRecipeIngredients = (obj: any): string[] => {
+    if (!obj) return [];
+    // If recipes is an array, take the "selected" || first recipe
+    const r = Array.isArray(obj) ? obj[0] : obj;
+    const keys = ["ingredients", "ingredientList", "items"];
+    for (const k of keys) {
+      const got = asStringList(r?.[k]);
+      if (got.length) return got;
+    }
+    // Sometimes the recipe is a big text blob - very last resort: extract lines that look like ingredients
+    if (typeof r === "string") {
+      const lines = r.split("\n").map((x) => x.trim()).filter(Boolean);
+      return lines.slice(0, 30);
+    }
+    return [];
+  };
+
+  // Priority: missing list first
+  const firstNonEmpty = (...lists: string[][]): string[] => {
+    for (const l of lists) {
+      if (Array.isArray(l) && l.length) return l;
+    }
+    return [];
+  };
+
+  const rr = input?.recipesResult;
+  const missing = firstNonEmpty(
+    pickMissing(input),
+    pickMissing(rr?.recipes),
+    pickMissing(rr),
+    pickMissing(input?.recipes),
+    pickMissing(input?.recipe),
+    pickMissing(input?.result)
+  );
+
+  const base = missing.length
+    ? missing
+    : pickRecipeIngredients(rr?.recipes) || pickRecipeIngredients(input?.recipes) || pickRecipeIngredients(input?.recipe) || pickRecipeIngredients(input);
+
+  const cleaned = base.map(norm).filter(Boolean);
+
+  // De-duplicate, drop trivial words
+  const drop = new Set(["salt", "peber", "vand", "olie", "sukker", "mel", "smør"]);
+  const uniq: string[] = [];
+  const seen = new Set<string>();
+  for (const x of cleaned) {
+    if (drop.has(x)) continue;
+    if (!seen.has(x)) {
+      seen.add(x);
+      uniq.push(x);
+    }
+    if (uniq.length >= maxQueries) break;
+  }
+
+  // If empty, return empty (OffersPanel can show a hint)
+  return uniq;
+}
+
+
 type ApiItem = {
   name: string;
   confidence?: number;
@@ -39,6 +161,7 @@ type Recipe = {
   ingredients: Array<{ item: string; amount: string }>;
   steps: string[];
   tags?: string[];
+  missing_items?: string[];
 };
 
 type RecipesOk = {
@@ -61,6 +184,25 @@ type RecipesResult = RecipesOk | RecipesErr;
 
 function stripWhitespace(s: string) {
   return (s ?? "").trim().replace(/\s+/g, "");
+}
+
+
+function normalizeItem(s: string) {
+  return String(s ?? "").replace(/\s+/g, " ").trim();
+}
+
+function dedupeCaseInsensitive(list: string[]) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    const n = normalizeItem(raw);
+    if (!n) continue;
+    const key = n.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(n);
+  }
+  return out;
 }
 
 function dataUrlByteSize(dataUrl: string): number {
@@ -193,7 +335,11 @@ const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [apiBusy, setApiBusy] = useState(false);
   const [apiResult, setApiResult] = useState<FridgeResult | null>(null);
-  
+
+  // Confirm layer (user edits this list; recipes are generated ONLY from here)
+  const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
+  const [newConfirmedItem, setNewConfirmedItem] = useState<string>("");
+
   const [itemsLang, setItemsLang] = useState<Lang>("da");
 const [error, setError] = useState("");
 
@@ -201,11 +347,19 @@ const [error, setError] = useState("");
   const [recipesResult, setRecipesResult] = useState<RecipesResult | null>(
     null,
   );
+
+  const offerQueries = useMemo(() => {
+    // Primært: opskriftens missing_items (hvis backend leverer dem)
+    // Fallback: deriveOfferQueries prøver også at falde tilbage til ingredienser.
+    return deriveOfferQueries({ recipesResult, fridge: confirmedItems });
+  }, [recipesResult, confirmedItems]);
   const [constraints, setConstraints] = useState<string>(
     t("da", "constraints_placeholder"),
   );
 
   const [sha, setSha] = useState<string>("");
+
+  const lastConfirmedKeyRef = useRef<string>("");
 
   const MAX_DIM = 1280;
   const JPEG_QUALITY = 0.82;
@@ -261,6 +415,23 @@ useEffect(() => {
       localStorage.setItem("ff_lang", lang);
     } catch {}
   }, [lang]);
+
+  // When we get a NEW scan result, initialize confirmed list from detected items
+  useEffect(() => {
+    if (!apiResult || apiResult.ok !== true) {
+      setConfirmedItems([]);
+      setNewConfirmedItem("");
+      lastConfirmedKeyRef.current = "";
+      return;
+    }
+    const key = String((apiResult as any).sha || (apiResult as any).requestId || "");
+    if (key && key === lastConfirmedKeyRef.current) return;
+    lastConfirmedKeyRef.current = key;
+
+    const names = dedupeCaseInsensitive((apiResult as any).items.map((it: any) => it?.name ?? ""));
+    setConfirmedItems(names);
+    setNewConfirmedItem("");
+  }, [apiResult]);
 
   useEffect(() => {
     // Hvis vi tidligere satte placeholder-teksten som value, så ryd den.
@@ -417,8 +588,10 @@ useEffect(() => {
   async function callRecipes() {
     setRecipesResult(null);
 
-    if (!apiResult || apiResult.ok !== true || apiResult.items.length === 0) {
-      setRecipesResult({ ok: false, error: t(lang, "missing_items") });
+    const confirmed = dedupeCaseInsensitive(confirmedItems);
+
+    if (confirmed.length === 0) {
+      setRecipesResult({ ok: false, error: t(lang, "missing_confirmed_items") });
       return;
     }
 
@@ -439,8 +612,8 @@ useEffect(() => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: apiResult.items,
-          pantry,
+          fridge_items: confirmed,
+          pantry_items: pantry,
           constraints,
           count: 4,
           language: lang,
@@ -476,6 +649,26 @@ useEffect(() => {
       setRecipesBusy(false);
     }
   }
+
+  function updateConfirmedAt(index: number, value: string) {
+    setConfirmedItems((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return dedupeCaseInsensitive(next);
+    });
+  }
+
+  function removeConfirmedAt(index: number) {
+    setConfirmedItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addConfirmed() {
+    const v = normalizeItem(newConfirmedItem);
+    if (!v) return;
+    setConfirmedItems((prev) => dedupeCaseInsensitive([...prev, v]));
+    setNewConfirmedItem("");
+  }
+
 
   const sortedItems = useMemo(() => {
     if (!apiResult || apiResult.ok !== true) return [];
@@ -628,7 +821,8 @@ useEffect(() => {
                       alt="Preview"
                       className="h-[340px] w-full bg-white object-contain"
                     />
-                  ) : (
+
+                                      ) : (
                     <div className="flex h-[340px] flex-col items-center justify-center gap-3">
                       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
                         {t(lang, "tap_to_choose")}
@@ -640,6 +834,13 @@ useEffect(() => {
                   )}
                 </div>
               </button>
+
+
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>offerQueries: {JSON.stringify(offerQueries)}</div>
+
+
+
+              <OffersPanel queries={offerQueries} />
 
               {error ? (
                 <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
@@ -712,6 +913,73 @@ useEffect(() => {
                   </div>
                 </div>
               )}
+              <div className="mt-6">
+                <div className="text-sm font-semibold text-slate-900">
+                  {t(lang, "confirm_items_title")}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {t(lang, "confirm_items_subtitle")}
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {confirmedItems.length ? (
+                    confirmedItems.map((name, idx) => (
+                      <div
+                        key={`${name}-${idx}`}
+                        className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2"
+                      >
+                        <input
+                          className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={name}
+                          onChange={(e) => updateConfirmedAt(idx, e.target.value)}
+                          onBlur={(e) => updateConfirmedAt(idx, e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="h-9 w-9 rounded-xl border border-slate-200 bg-white text-lg font-semibold text-slate-600 hover:bg-slate-50"
+                          onClick={() => removeConfirmedAt(idx)}
+                          aria-label={t(lang, "delete_item")}
+                          title={t(lang, "delete_item")}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                      {t(lang, "no_confirmed_items")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    value={newConfirmedItem}
+                    onChange={(e) => setNewConfirmedItem(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addConfirmed();
+                      }
+                    }}
+                    placeholder={t(lang, "add_item_placeholder")}
+                  />
+                  <button
+                    type="button"
+                    className="h-10 whitespace-nowrap rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                    onClick={addConfirmed}
+                  >
+                    {t(lang, "add_item")}
+                  </button>
+                </div>
+
+                <div className="mt-2 text-xs text-slate-500">
+                  {t(lang, "dedupe_hint")}
+                </div>
+              </div>
+
+
 
               <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-4">
                 <div className="text-base font-semibold text-slate-900">
@@ -762,6 +1030,28 @@ useEffect(() => {
                               {r.summary}
                             </div>
                           ) : null}
+
+                          {Array.isArray(r.missing_items) && r.missing_items.length ? (
+                            <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3">
+                              <div className="text-xs font-semibold text-rose-900">
+                                {t(lang, "missing_items_title")}
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {r.missing_items.map((m, mi) => (
+                                  <span
+                                    key={`${m}-${mi}`}
+                                    className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-900"
+                                  >
+                                    {m}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-xs font-semibold text-slate-500">
+                              {t(lang, "missing_items_none")}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -791,3 +1081,4 @@ useEffect(() => {
 </main>
   );
 }
+{/* Eksempel: <OffersPanel queries={ingredients.map(x=>x.name).slice(0,4)} /> */}
