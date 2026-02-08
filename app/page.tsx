@@ -205,14 +205,21 @@ const [error, setError] = useState("");
 
   const MAX_DIM = 1280;
   const JPEG_QUALITY = 0.82;
-
   useEffect(() => {
     try {
       const saved = localStorage.getItem("ff_lang") as Lang | null;
       if (saved && LANGS.some((x) => x.code === saved)) setLang(saved);
-    
+    } catch {}
+  }, []);
 
+  
+
+  // Reset analyzed results on language change (simplest stable behavior)
   useEffect(() => {
+    setApiResult(null);
+    setError("");
+  }, [lang]);
+useEffect(() => {
     if (!apiResult || apiResult.ok !== true || apiResult.items.length === 0) return;
     if (itemsLang === lang) return;
 
@@ -245,10 +252,7 @@ const [error, setError] = useState("");
       }
     })();
   }, [lang, apiResult, itemsLang]);
-} catch {}
-  }, []);
-
-  useEffect(() => {
+useEffect(() => {
     try {
       localStorage.setItem("ff_lang", lang);
     } catch {}
