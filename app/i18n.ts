@@ -52,7 +52,15 @@ export type TKey =
   | "api_footer"
   | "language_label"
   | "missing_image"
-  | "missing_items";
+  | "missing_items"
+  | "pantry_open"
+  | "pantry_help"
+  | "pantry_title"
+  | "pantry_subtitle"
+  | "pantry_selected"
+  | "pantry_select_all"
+  | "pantry_reset"
+  | "brand_line";
 
 export const I18N: Record<Lang, Record<TKey, string>> = {
   da: {
@@ -87,6 +95,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Sprog",
     missing_image: "Vælg et billede først.",
     missing_items: "Kør analyse først (vi mangler ingredienser).",
+    brand_line: "Quartigo",
+    pantry_open: "Spisekammer",
+    pantry_help: "Fortæl appen hvilke basisvarer du allerede har. Så bliver opskrifterne mere præcise og mindre gætteri.",
+    pantry_title: "Spisekammer",
+    pantry_subtitle: "Tjek af basisvarer og krydderier du har derhjemme.",
+    pantry_selected: "Valgt",
+    pantry_select_all: "Vælg alle",
+    pantry_reset: "Nulstil",
   },
   no: {
     brand: "QARTIGO",
@@ -120,6 +136,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Språk",
     missing_image: "Velg et bilde først.",
     missing_items: "Kjør analyse først (vi trenger ingredienser).",
+    brand_line: "Quartigo",
+    pantry_open: "Spiskammer",
+    pantry_help: "Fortell appen hvilke basisvarer du allerede har. Da blir oppskriftene mer presise.",
+    pantry_title: "Spiskammer",
+    pantry_subtitle: "Kryss av basisvarer og krydder du har hjemme.",
+    pantry_selected: "Valgt",
+    pantry_select_all: "Velg alle",
+    pantry_reset: "Nullstill",
   },
   sv: {
     brand: "QARTIGO",
@@ -153,6 +177,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Språk",
     missing_image: "Välj en bild först.",
     missing_items: "Kör analys först (vi behöver ingredienser).",
+    brand_line: "Quartigo",
+    pantry_open: "Skafferi",
+    pantry_help: "Berätta vilka basvaror du redan har. Då blir recepten mer träffsäkra.",
+    pantry_title: "Skafferi",
+    pantry_subtitle: "Kryssa i basvaror och kryddor du har hemma.",
+    pantry_selected: "Valt",
+    pantry_select_all: "Välj alla",
+    pantry_reset: "Återställ",
   },
   de: {
     brand: "QARTIGO",
@@ -186,6 +218,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Sprache",
     missing_image: "Bitte zuerst ein Bild auswählen.",
     missing_items: "Bitte zuerst analysieren (wir brauchen Zutaten).",
+    brand_line: "Quartigo",
+    pantry_open: "Vorratskammer",
+    pantry_help: "Sag der App, welche Basics du schon hast. Dann werden Rezepte präziser.",
+    pantry_title: "Vorratskammer",
+    pantry_subtitle: "Hake Grundzutaten und Gewürze ab, die du zu Hause hast.",
+    pantry_selected: "Ausgewählt",
+    pantry_select_all: "Alle auswählen",
+    pantry_reset: "Zurücksetzen",
   },
   en: {
     brand: "QARTIGO",
@@ -219,6 +259,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Language",
     missing_image: "Pick an image first.",
     missing_items: "Run analysis first (we need ingredients).",
+    brand_line: "Quartigo",
+    pantry_open: "Pantry",
+    pantry_help: "Tell the app which staples you already have. Recipes become more accurate and less guessy.",
+    pantry_title: "Pantry",
+    pantry_subtitle: "Check off pantry staples and spices you have at home.",
+    pantry_selected: "Selected",
+    pantry_select_all: "Select all",
+    pantry_reset: "Reset",
   },
   fr: {
     brand: "QARTIGO",
@@ -252,6 +300,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Langue",
     missing_image: "Choisis d’abord une image.",
     missing_items: "Lance d’abord l’analyse (ingrédients requis).",
+    brand_line: "Quartigo",
+    pantry_open: "Garde-manger",
+    pantry_help: "Indique ce que tu as déjà en produits de base. Les recettes seront plus précises.",
+    pantry_title: "Garde-manger",
+    pantry_subtitle: "Coche les produits de base et épices que tu as à la maison.",
+    pantry_selected: "Sélectionné",
+    pantry_select_all: "Tout sélectionner",
+    pantry_reset: "Réinitialiser",
   },
   it: {
     brand: "QARTIGO",
@@ -285,6 +341,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Lingua",
     missing_image: "Scegli prima un’immagine.",
     missing_items: "Esegui prima l’analisi (servono ingredienti).",
+    brand_line: "Quartigo",
+    pantry_open: "Dispensa",
+    pantry_help: "Indica cosa hai già in dispensa. Le ricette diventano più precise.",
+    pantry_title: "Dispensa",
+    pantry_subtitle: "Seleziona le basi e le spezie che hai in casa.",
+    pantry_selected: "Selezionati",
+    pantry_select_all: "Seleziona tutto",
+    pantry_reset: "Reimposta",
   },
   es: {
     brand: "QARTIGO",
@@ -318,6 +382,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Idioma",
     missing_image: "Primero elige una imagen.",
     missing_items: "Primero analiza (faltan ingredientes).",
+    brand_line: "Quartigo",
+    pantry_open: "Despensa",
+    pantry_help: "Dile a la app qué básicos ya tienes. Así las recetas serán más precisas.",
+    pantry_title: "Despensa",
+    pantry_subtitle: "Marca los básicos y especias que tienes en casa.",
+    pantry_selected: "Seleccionado",
+    pantry_select_all: "Seleccionar todo",
+    pantry_reset: "Restablecer",
   },
   pt: {
     brand: "QARTIGO",
@@ -351,6 +423,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "Idioma",
     missing_image: "Escolha uma imagem primeiro.",
     missing_items: "Faça a análise primeiro (precisamos dos ingredientes).",
+    brand_line: "Quartigo",
+    pantry_open: "Despensa",
+    pantry_help: "Diz à app quais básicos já tens. Assim as receitas ficam mais precisas.",
+    pantry_title: "Despensa",
+    pantry_subtitle: "Assinale os básicos e especiarias que tens em casa.",
+    pantry_selected: "Selecionado",
+    pantry_select_all: "Selecionar tudo",
+    pantry_reset: "Repor",
   },
   ar: {
     brand: "QARTIGO",
@@ -382,6 +462,14 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     language_label: "اللغة",
     missing_image: "اختر صورة أولاً.",
     missing_items: "قم بالتحليل أولاً (نحتاج المكونات).",
+    brand_line: "Quartigo",
+    pantry_open: "المؤن",
+    pantry_help: "أخبر التطبيق بما لديك من الأساسيات. ستصبح الوصفات أدق.",
+    pantry_title: "المؤن",
+    pantry_subtitle: "حدّد المواد الأساسية والتوابل المتوفّرة لديك.",
+    pantry_selected: "المحدد",
+    pantry_select_all: "تحديد الكل",
+    pantry_reset: "إعادة ضبط",
   },
 };
 

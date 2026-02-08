@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LANGS, type Lang, t } from "./i18n";
 
+import PantryModal from "./components/PantryModal";
+
 type ApiItem = {
   name: string;
   confidence?: number;
@@ -179,7 +181,9 @@ function langDir(lang: Lang): "ltr" | "rtl" {
 }
 
 export default function Page() {
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  
+  const [pantryOpen, setPantryOpen] = useState(false);
+const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [lang, setLang] = useState<Lang>("da");
 
@@ -420,11 +424,23 @@ useEffect(() => {
 
     setRecipesBusy(true);
     try {
+      const pantry = (() => {
+      try {
+      const raw = localStorage.getItem("quartigo_pantry_v1");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.map(String) : [];
+      } catch {
+      return [];
+      }
+      })();
+
+
       const res = await fetch("/api/recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: apiResult.items,
+          pantry,
           constraints,
           count: 4,
           language: lang,
@@ -489,15 +505,38 @@ useEffect(() => {
       <div className="mx-auto max-w-6xl px-5 py-10">
         <header className="mb-8 flex items-start justify-between gap-6">
           <div>
-            <div className="text-xs font-semibold tracking-[0.18em] text-slate-500">
-              {t(lang, "brand")}
+<div className="text-xs font-semibold tracking-[0.18em] text-slate-500">
+              {t(lang, "brand_line")}
             </div>
-            <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-900">
+<h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-900">
               Smart Shopping
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-600">
               {t(lang, "subtitle")}
             </p>
+
+
+            <div className="mt-4 max-w-xl rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    {t(lang, "pantry_open")}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {t(lang, "pantry_help")}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPantryOpen(true)}
+                  className="shrink-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                >
+                  {t(lang, "pantry_open")}
+                </button>
+              </div>
+            </div>
+
           </div>
 
           <div className="flex items-center gap-3">
@@ -737,6 +776,18 @@ useEffect(() => {
           </div>
         </section>
       </div>
-    </main>
+    
+
+      <PantryModal
+        lang={lang}
+        open={pantryOpen}
+        onClose={() => setPantryOpen(false)}
+        title={t(lang, "pantry_title")}
+        subtitle={t(lang, "pantry_subtitle")}
+        selectedLabel={t(lang, "pantry_selected")}
+        selectAllLabel={t(lang, "pantry_select_all")}
+        resetLabel={t(lang, "pantry_reset")}
+      />
+</main>
   );
 }

@@ -1,0 +1,167 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { Lang, PantryKey } from "../pantry/catalog";
+import { PANTRY_KEYS, PANTRY_LABELS } from "../pantry/catalog";
+import { loadPantryValues, savePantryValues } from "../pantry/storage";
+
+type PantryEntry = { key: PantryKey; label: string; value: string };
+
+const CANONICAL_VALUE: Record<PantryKey, string> = {
+  salt: "salt",
+  pepper: "black pepper",
+  oil: "cooking oil",
+  butter: "butter",
+  vinegar: "vinegar",
+  soy_sauce: "soy sauce",
+  honey: "honey",
+  sugar: "sugar",
+  flour: "wheat flour",
+  rice: "rice",
+  pasta: "pasta",
+  oats: "oats",
+  breadcrumbs: "breadcrumbs",
+  tomato_paste: "tomato paste",
+  canned_tomatoes: "canned tomatoes",
+  coconut_milk: "coconut milk",
+  mustard: "mustard",
+  ketchup: "ketchup",
+  mayo: "mayonnaise",
+  garlic_powder: "garlic powder",
+  paprika: "paprika",
+  cumin: "cumin",
+  curry: "curry powder",
+  chili_flakes: "chili flakes",
+  oregano: "oregano",
+  basil: "basil",
+  thyme: "thyme",
+  rosemary: "rosemary",
+  cinnamon: "cinnamon",
+  vanilla_sugar: "vanilla sugar",
+};
+
+export default function PantryModal(props: {
+  lang: Lang;
+  open: boolean;
+  title: string;
+  subtitle: string;
+  selectedLabel: string;
+  selectAllLabel: string;
+  resetLabel: string;
+  onClose: () => void;
+}) {
+  const { lang, open, onClose, title, subtitle, selectedLabel, selectAllLabel, resetLabel } = props;
+
+  const labels = (PANTRY_LABELS as any)[lang] ?? PANTRY_LABELS.en;
+
+  const list = useMemo<PantryEntry[]>(() => {
+    return PANTRY_KEYS.map((k) => ({
+      key: k,
+      label: (labels as any)[k] ?? String(k),
+      value: CANONICAL_VALUE[k],
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!open) return;
+    const values = loadPantryValues();
+    setSelected(new Set(values));
+  }, [open]);
+
+  function persist(next: Set<string>) {
+    savePantryValues(Array.from(next));
+  }
+
+  function toggle(value: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      persist(next);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    const all = new Set(list.map((x) => x.value));
+    setSelected(all);
+    persist(all);
+  }
+
+  function clearAll() {
+    const empty = new Set<string>();
+    setSelected(empty);
+    persist(empty);
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+
+      <div className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 p-4">
+          <div>
+            <div className="text-base font-semibold text-slate-900">{title}</div>
+            <div className="mt-1 text-xs text-slate-600">{subtitle}</div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+            aria-label="Close"
+            title="Close"
+          >
+            X
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-slate-700">
+              {selectedLabel}: <span className="font-semibold">{selected.size}</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={selectAll}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+              >
+                {selectAllLabel}
+              </button>
+              <button
+                onClick={clearAll}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+              >
+                {resetLabel}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {list.map((x) => {
+              const checked = selected.has(x.value);
+              return (
+                <label
+                  key={x.key}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(x.value)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm text-slate-800">{x.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
