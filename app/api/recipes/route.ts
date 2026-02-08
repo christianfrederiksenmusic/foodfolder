@@ -183,6 +183,27 @@ export async function POST(req: Request) {
 
     const model = "claude-sonnet-4-5";
 
+const recipesSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    recipes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: true,
+        properties: {
+          title: { type: "string" },
+          ingredients: { type: "array", items: { type: "string" } },
+          steps: { type: "array", items: { type: "string" } }
+        }
+      }
+    }
+  },
+  required: ["recipes"]
+} as const;
+
+
     const schema = {
       type: "object",
       additionalProperties: false,
