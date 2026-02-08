@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { loadPantryValues, savePantryValues } from "./storage";
 
 type PantryItem = { key: string; label: string; value: string };
 
-const STORAGE_KEY = "quartigo_pantry_v1";
-
-// value = canonical string der sendes til /api/recipes
+// Canonical values are what we store + send downstream
 const PANTRY_ITEMS: PantryItem[] = [
   { key: "salt", label: "Salt", value: "salt" },
   { key: "pepper", label: "Peber", value: "black pepper" },
   { key: "oil", label: "Olie (neutral/oliven)", value: "cooking oil" },
   { key: "butter", label: "Smør", value: "butter" },
   { key: "vinegar", label: "Eddike", value: "vinegar" },
-  { key: "soy", label: "Sojasauce", value: "soy sauce" },
+  { key: "soy_sauce", label: "Sojasauce", value: "soy sauce" },
   { key: "honey", label: "Honning", value: "honey" },
   { key: "sugar", label: "Sukker", value: "sugar" },
   { key: "flour", label: "Hvedemel", value: "wheat flour" },
@@ -31,29 +30,17 @@ const PANTRY_ITEMS: PantryItem[] = [
   { key: "paprika", label: "Paprika", value: "paprika" },
   { key: "cumin", label: "Spidskommen", value: "cumin" },
   { key: "curry", label: "Karri", value: "curry powder" },
-  { key: "chili", label: "Chiliflager", value: "chili flakes" },
+  { key: "chili_flakes", label: "Chiliflager", value: "chili flakes" },
   { key: "oregano", label: "Oregano", value: "oregano" },
   { key: "basil", label: "Basilikum", value: "basil" },
   { key: "thyme", label: "Timian", value: "thyme" },
   { key: "rosemary", label: "Rosmarin", value: "rosemary" },
   { key: "cinnamon", label: "Kanel", value: "cinnamon" },
-  { key: "vanilla", label: "Vaniljesukker", value: "vanilla sugar" },
+  { key: "vanilla_sugar", label: "Vaniljesukker", value: "vanilla sugar" },
 ];
 
-function loadSelected(): Set<string> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.map(String));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveSelected(sel: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(sel)));
+function toSet(values: string[]): Set<string> {
+  return new Set((values || []).map(String));
 }
 
 export default function PantryClient() {
@@ -61,31 +48,36 @@ export default function PantryClient() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setSelected(loadSelected());
+    // loadPantryValues() also migrates historical wrong formats and writes back
+    setSelected(toSet(loadPantryValues()));
   }, []);
 
   const selectedCount = selected.size;
 
-  function toggle(key: string) {
+  function persist(next: Set<string>) {
+    savePantryValues(Array.from(next));
+  }
+
+  function toggle(value: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      saveSelected(next);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      persist(next);
       return next;
     });
   }
 
   function selectAll() {
-    const all = new Set(list.map((x) => x.key));
+    const all = new Set(list.map((x) => x.value));
     setSelected(all);
-    saveSelected(all);
+    persist(all);
   }
 
   function clearAll() {
     const empty = new Set<string>();
     setSelected(empty);
-    saveSelected(empty);
+    persist(empty);
   }
 
   return (
@@ -112,7 +104,7 @@ export default function PantryClient() {
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {list.map((it) => {
-          const checked = selected.has(it.key);
+          const checked = selected.has(it.value);
           return (
             <label
               key={it.key}
@@ -121,7 +113,7 @@ export default function PantryClient() {
               <input
                 type="checkbox"
                 checked={checked}
-                onChange={() => toggle(it.key)}
+                onChange={() => toggle(it.value)}
                 className="h-4 w-4"
               />
               <span className="text-sm text-slate-800">{it.label}</span>
@@ -131,7 +123,7 @@ export default function PantryClient() {
       </div>
 
       <div className="mt-4 text-xs text-slate-500">
-        Pantry gemmes lokalt i browseren (localStorage). (Key: {STORAGE_KEY})
+        Pantry gemmes lokalt i browseren (localStorage) i canonical format.
       </div>
     </div>
   );

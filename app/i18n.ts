@@ -65,6 +65,9 @@ export type TKey =
   | "scan_items_subtitle"
   | "confirm_items_title"
   | "confirm_items_subtitle"
+  | "suggestions_title"
+  | "suggestions_subtitle"
+  | "add_suggestion"
   | "add_item"
   | "add_item_placeholder"
   | "delete_item"
@@ -128,6 +131,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Bekræft ingredienser først (listen er tom).",
     missing_items_title: "Mangler (må ikke antages)",
     missing_items_none: "Ingen manglende items - kun fridge + pantry blev brugt.",
+    suggestions_title: "Forslag",
+    suggestions_subtitle: "Hurtige tilføjelser baseret på det, der blev fundet.",
+    add_suggestion: "Tilføj",
   },
   no: {
     brand: "QARTIGO",
@@ -181,6 +187,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   sv: {
     brand: "QARTIGO",
@@ -234,6 +243,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   de: {
     brand: "QARTIGO",
@@ -287,6 +299,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   en: {
     brand: "QARTIGO",
@@ -340,6 +355,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   fr: {
     brand: "QARTIGO",
@@ -393,6 +411,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   it: {
     brand: "QARTIGO",
@@ -446,6 +467,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   es: {
     brand: "QARTIGO",
@@ -499,6 +523,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   pt: {
     brand: "QARTIGO",
@@ -552,6 +579,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
   ar: {
     brand: "QARTIGO",
@@ -603,6 +633,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
     missing_items_title: "Missing (not allowed to assume)",
     missing_items_none: "No missing items - only fridge + pantry were used.",
+    suggestions_title: "Suggestions",
+    suggestions_subtitle: "Quick adds based on what was found.",
+    add_suggestion: "Add",
   },
 };
 

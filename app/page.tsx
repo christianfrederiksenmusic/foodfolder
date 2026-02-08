@@ -19,6 +19,7 @@ function deriveOfferQueries(input: any): string[] {
       .replace(/\([^)]*\)/g, " ")
       .replace(/[0-9]+([.,][0-9]+)?/g, " ")
       .replace(/\b(g|kg|ml|l|stk|stk\.|spsk|tsk|dl|cl)\b/g, " ")
+      .replace(/[.,;:!?/\\|"'’”“()\[\]{}]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
@@ -191,6 +192,81 @@ function normalizeItem(s: string) {
   return String(s ?? "").replace(/\s+/g, " ").trim();
 }
 
+
+function foldKeyDa(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/æ/g, "ae")
+    .replace(/ø/g, "oe")
+    .replace(/å/g, "aa");
+}
+
+function singularizeDa(s: string): string {
+  const t = foldKeyDa(s);
+  // very simple plural stripping for common Danish food nouns
+  if (t.endsWith("erne")) return t.slice(0, -4);
+  if (t.endsWith("ene")) return t.slice(0, -3);
+  if (t.endsWith("er")) return t.slice(0, -2);
+  if (t.endsWith("e")) return t.slice(0, -1);
+  return t;
+}
+
+function loadPantryLocal(): string[] {
+  try {
+    const raw = localStorage.getItem("quartigo_pantry_v1");
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function deriveSuggestions(found: string[], pantry: string[], lang: Lang): string[] {
+  // For now: only strong Danish mapping (user is primarily da). Other languages: no suggestions.
+  if (lang !== "da") return [];
+
+  const map: Record<string, string[]> = {
+    aeble: ["citron", "rosiner", "kanel"],
+    gulerod: ["ingefaer", "citron", "loeg"],
+    tomat: ["loeg", "hvidloeg", "basilikum"],
+    agurk: ["citron", "dild"],
+    salat: ["agurk", "tomat", "citron"],
+    kartoffel: ["loeg", "hvidloeg", "persille"],
+    banan: ["yoghurt", "havregryn", "kanel"],
+  };
+
+  const normOut: Record<string, string> = {
+    ingefaer: "ingefær",
+    loeg: "løg",
+    hvidloeg: "hvidløg",
+    aeble: "æble",
+  };
+
+  const have = new Set<string>();
+  for (const x of [...found, ...pantry]) have.add(singularizeDa(x));
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  for (const f of found) {
+    const key = singularizeDa(f);
+    const sug = map[key] || [];
+    for (const sKey of sug) {
+      const disp = normOut[sKey] || sKey;
+      const dispKey = singularizeDa(disp);
+      if (have.has(dispKey)) continue;
+      if (seen.has(dispKey)) continue;
+      seen.add(dispKey);
+      out.push(disp);
+      if (out.length >= 8) return out;
+    }
+  }
+
+  return out;
+}
+
 function dedupeCaseInsensitive(list: string[]) {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -338,6 +414,7 @@ const fileRef = useRef<HTMLInputElement | null>(null);
 
   // Confirm layer (user edits this list; recipes are generated ONLY from here)
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [newConfirmedItem, setNewConfirmedItem] = useState<string>("");
 
   const [itemsLang, setItemsLang] = useState<Lang>("da");
@@ -577,7 +654,14 @@ useEffect(() => {
         meta: json?.meta,
       });
     
-      setItemsLang(lang);
+      
+      try {
+        const pantry = loadPantryLocal();
+        setSuggestions(deriveSuggestions(items.map((x) => x.name), pantry, lang));
+      } catch {
+        setSuggestions([]);
+      }
+setItemsLang(lang);
 } catch (err: any) {
       setApiResult({ ok: false, error: err?.message ?? "Network error." });
     } finally {
@@ -922,7 +1006,36 @@ useEffect(() => {
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  {confirmedItems.length ? (
+                  
+                {suggestions.length ? (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="text-sm font-semibold text-slate-900">
+                      {t(lang, "suggestions_title")}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600">
+                      {t(lang, "suggestions_subtitle")}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {suggestions.map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800 hover:bg-slate-50"
+                          onClick={() => {
+                            setConfirmedItems((prev) => dedupeCaseInsensitive([...prev, sug]));
+                            setSuggestions((prev) => prev.filter((x) => x !== sug));
+                          }}
+                          title={t(lang, "add_suggestion")}
+                        >
+                          <span>{sug}</span>
+                          <span className="text-xs text-slate-500">{t(lang, "add_suggestion")}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+{confirmedItems.length ? (
                     confirmedItems.map((name, idx) => (
                       <div
                         key={`${name}-${idx}`}

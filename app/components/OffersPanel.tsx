@@ -37,6 +37,74 @@ function isoToDaDate(iso: string | null) {
   return d.toLocaleDateString("da-DK");
 }
 
+function normalizeText(x: any): string {
+  return String(x ?? "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9æøå\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenizeQuery(q: string): string[] {
+  const n = normalizeText(q);
+  if (!n) return [];
+  // Drop very short tokens (noise)
+  return n.split(" ").map((t) => t.trim()).filter((t) => t.length >= 3);
+}
+
+function isValidHttpUrl(u: string): boolean {
+  return /^https?:\/\//i.test(u || "");
+}
+
+const BLACKLIST_SUBSTRINGS = [
+  // "boxes / storage noise"
+  "box",
+  "opbevaringsboks",
+  "opbevaring",
+  "kasse",
+  "container",
+  // pet food noise
+  "hund",
+  "hunde",
+  "dog",
+  "kat",
+  "cat",
+  "foder",
+  // common brand campaign noise we saw
+  "knorr",
+];
+
+function looksLikeNoiseName(nameNorm: string): boolean {
+  if (!nameNorm) return true;
+  for (const bad of BLACKLIST_SUBSTRINGS) {
+    if (nameNorm.includes(bad)) return true;
+  }
+  return false;
+}
+
+function matchesAnyQuery(offerName: string, queries: string[]): boolean {
+  const nameNorm = normalizeText(offerName);
+  if (!nameNorm) return false;
+
+  // For each query, require at least 1 meaningful token to appear in the name
+  for (const q of queries) {
+    const toks = tokenizeQuery(q);
+    if (toks.length === 0) continue;
+
+    let hit = 0;
+    for (const t of toks) {
+      // crude word-ish boundary: spaces around token after normalization
+      if (nameNorm === t || nameNorm.includes(` ${t} `) || nameNorm.startsWith(`${t} `) || nameNorm.endsWith(` ${t}`) || nameNorm.includes(t)) {
+        hit++;
+        break;
+      }
+    }
+    if (hit > 0) return true;
+  }
+  return false;
+}
+
 export default function OffersPanel(props: {
   queries: string[];
   limitPerQuery?: number;
@@ -85,16 +153,44 @@ export default function OffersPanel(props: {
 
         for (const r of results) {
           for (const o of r.offers || []) {
+            if (!o || !o.sourceUrl) continue;
             if (!byUrl.has(o.sourceUrl)) byUrl.set(o.sourceUrl, o);
           }
           for (const p of r.promotions || []) promos.push(p);
         }
 
+        // Hard filters: must have price+store+name+valid url and be query-relevant
         const mergedOffers = Array.from(byUrl.values())
-          .filter((o) => o.price !== null)
+          .filter((o) => {
+            const name = o.name || "";
+            const store = o.store || "";
+            const url = o.sourceUrl || "";
+            const price = o.price;
+
+            if (!name || !store) return false;
+            if (!isValidHttpUrl(url)) return false;
+            if (price === null || price === undefined) return false;
+            if (!Number.isFinite(price)) return false;
+            if (price <= 0 || price > 100000) return false;
+
+            const nameNorm = normalizeText(name);
+            if (looksLikeNoiseName(nameNorm)) return false;
+            if (!matchesAnyQuery(name, queries)) return false;
+
+            return true;
+          })
           .sort((a, b) => (a.price ?? 1e12) - (b.price ?? 1e12));
 
-        const mergedPromos = promos.filter((p) => p.price === null).slice(0, 20);
+        // Promotions: keep them, but cap and avoid pure noise
+        const mergedPromos = promos
+          .filter((p) => p && p.price === null && !!p.sourceUrl && isValidHttpUrl(p.sourceUrl))
+          .filter((p) => {
+            const nameNorm = normalizeText(p.name || "");
+            if (!nameNorm) return false;
+            if (looksLikeNoiseName(nameNorm)) return false;
+            return matchesAnyQuery(p.name || "", queries);
+          })
+          .slice(0, 20);
 
         console.log("[OffersPanel] queries=", queries, "offers=", mergedOffers.length, "promos=", mergedPromos.length);
         setOffers(mergedOffers);
@@ -133,7 +229,7 @@ export default function OffersPanel(props: {
 
       {!err && !loading && offers.length === 0 && (
         <div className="mt-3 rounded-xl border border-black/10 bg-white p-3 text-sm opacity-80">
-          Ingen tilbud fundet (eller ingen priser i resultaterne).
+          Ingen tilbud fundet (eller alt blev filtreret fra som støj/irrelevant).
         </div>
       )}
 

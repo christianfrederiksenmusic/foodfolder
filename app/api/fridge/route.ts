@@ -6,6 +6,7 @@ type Body = {
   imageDataUrl?: string;
   base64?: string;
   mode?: string;
+  language?: string;
 };
 
 function pickFirstString(...vals: unknown[]): string | undefined {
@@ -163,6 +164,81 @@ function normalizeItems(obj: any): Array<{ name: string; kind?: string; contents
   return out;
 }
 
+
+function foldBasic(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[’']/g, "'")
+    .replace(/[.,;:!?(){}[\]"]/g, " ");
+}
+
+function isLikelyNonFood(name: string): boolean {
+  const n = " " + foldBasic(name) + " ";
+
+  // Packaging / containers / objects
+  const bad = [
+    " flaske ", " glas ", " krukke ", " beholder ", " plastik ", " plastic ",
+    " container ", " jar ", " bottle ", " box ", " tray ", " pose ", " bag ",
+    " emballage ", " packaging ", " låg ", " label ", " hylde ", " skål ",
+    " køleskab ", " fryser ", " bakke ", " dåse ", " can ", " tub "
+  ];
+  for (const w of bad) if (n.includes(w)) return true;
+
+  // Too generic / not a raw produce item
+  const generic = [
+    " vand ", " madolie ", " olie ", " salt ", " peber ", " sukker ",
+    " sauce ", " dressing ", " suppe ", " færdigret ", " ready meal ",
+    " yoghurt ", " mælk ", " smør ", " ost ", " is ", " fløde ", " flødeskum ",
+    " sojasauce ", " soy sauce ", " ketchup ", " mayonnaise ", " mayo "
+  ];
+  for (const w of generic) if (n.includes(w)) return true;
+
+  // Phrases that are typically prepared foods (not raw produce)
+  if (n.includes(" med ") || n.includes(" og ")) return true;
+
+  return false;
+}
+
+function filterToRawProduce(
+  items: Array<{ name: string; kind?: string; contents?: string; confidence?: number }>
+) {
+  const kept: Array<{ name: string; kind?: string; contents?: string; confidence?: number }> = [];
+  const rejected: Array<{ name: string; reason: string }> = [];
+
+  for (const it of items) {
+    const name = String(it?.name ?? "").trim();
+    if (!name) continue;
+
+    // If the model labeled it as something else, reject
+    const k = typeof it?.kind === "string" ? it.kind : undefined;
+    if (k && k !== "raw_produce") {
+      rejected.push({ name, reason: "not_raw_produce_kind" });
+      continue;
+    }
+
+    if (isLikelyNonFood(name)) {
+      rejected.push({ name, reason: "non_food_or_not_raw_produce" });
+      continue;
+    }
+
+    kept.push({ ...it, name, kind: "raw_produce", contents: undefined });
+  }
+
+  // De-dupe case-insensitive
+  const seen = new Set<string>();
+  const uniq: typeof kept = [];
+  for (const it of kept) {
+    const key = foldBasic(it.name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(it);
+  }
+
+  return { items: uniq, rejected };
+}
+
 function getVersion(): string {
   return (
     process.env.VERCEL_GIT_COMMIT_SHA ||
@@ -183,6 +259,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  let rejectedCount: number | undefined = undefined;
   const requestId = genRequestId();
   const started = Date.now();
 
@@ -232,13 +309,16 @@ const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUr
         : "";
 
     const prompt =
-      "Analyze the entire scene in the image (not only ingredients). Return ONLY JSON that matches the schema.\n"
-      + "Include: (1) ingredients/groceries, (2) containers/packaging (pot, box, jar, bottle, tub, can, tray, bag), and (3) if you can see the contents of a container, fill `contents` (e.g. name: 'jar', contents: 'jam').\n"
-      + "If contents cannot be determined, set contents: 'unknown' and lower confidence.\n"
-      + "No explanations, no markdown, no extra text.\n"
-      + "All text fields (name, contents) MUST be in " + targetLanguage + ".\n"
+      "Analyze the image and identify ONLY whole raw produce foods (fruits and vegetables).\\n"
+      + "Return ONLY JSON that matches the schema.\\n"
+      + "Hard rules:\\n"
+      + "- Only include raw produce (whole fruits/vegetables).\\n"
+      + "- Do NOT include containers/packaging (jar, bottle, box, plastic, glass), kitchen objects, brands, drinks, prepared meals, or sauces.\\n"
+      + "- If you are unsure, OMIT the item. Prefer high precision over recall.\\n"
+      + "- No explanations, no markdown, no extra text.\\n"
+      + "All text fields (name) MUST be in " + targetLanguage + ".\\n"
       + loanwordRule;
-    const model = "claude-sonnet-4-5";
+    const model = "claude-sonnet-4-5"; "claude-sonnet-4-5";
 
     const schema = {
       type: "object",
@@ -251,7 +331,7 @@ const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUr
             additionalProperties: false,
             properties: {
               name: { type: "string" },
-              kind: { type: "string", enum: ["ingredient", "container", "package", "drink", "unknown"] },
+              kind: { type: "string", enum: ["raw_produce"] },
               contents: { type: "string" },
               confidence: { type: "number" }
             },
@@ -352,7 +432,8 @@ const candidate = pickFirstString(body.image, body.imageBase64, body.imageDataUr
       meta: {
         model,
         bytesIn,
-        rate
+        rate,
+        rejected_count: rejectedCount
       }
     });
   } catch (e: any) {
