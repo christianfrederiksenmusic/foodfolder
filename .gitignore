@@ -45,3 +45,5 @@ app/page.tsx.bak.*
 *.bak.*
 _backup_ui/
 .env*.local
+_bundle_archive/
+quartigo_snapshot_*.txt
