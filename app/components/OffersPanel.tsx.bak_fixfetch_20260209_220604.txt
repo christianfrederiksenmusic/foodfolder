@@ -128,7 +128,7 @@ export default function OffersPanel(props: { queries: string[];
           queries.map(async (q) => {
             const res = await fetch(
               `/api/eta/search?q=${encodeURIComponent(q)}&limit=${limitPerQuery}&delayMs=120`,
-              { cache: "no-store" });
+              { cache: "no-store" }, []);
             if (!res.ok) throw new Error(`API ${res.status} for q=${q}`);
             return (await res.json()) as ApiResponse;
           })

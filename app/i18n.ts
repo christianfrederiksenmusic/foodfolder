@@ -23,8 +23,7 @@ export const LANGS: Array<{ code: Lang; label: string; dir: "ltr" | "rtl" }> = [
   { code: "ar", label: "العربية", dir: "rtl" },
 ];
 
-export type TKey =
-  | "brand"
+export type TKey = | "brand"
   | "title"
   | "subtitle"
   | "status_ready"
@@ -76,7 +75,38 @@ export type TKey =
   | "missing_confirmed_items"
   | "missing_items_title"
   | "missing_items_none"
-  | "brand_line";
+
+  | "offers_title"
+  | "offers_searching"
+  | "offers_no_search_yet"
+  | "offers_loading"
+  | "offers_count"
+  | "offers_none_found"
+  | "offers_error_prefix"
+  | "store_guide_title"
+  | "store_guide_coverage_on"
+  | "store_guide_no_missing_yet"
+  | "store_guide_loading"
+  | "store_guide_count"
+  | "store_guide_coverage_label"
+  | "store_guide_none_scored"
+  | "store_guide_error_prefix"
+  | "pantry_page_title"
+  | "pantry_page_desc"
+  | "brand_line"
+  | "add_to_shopping_list"
+  | "confirmed_list_help"
+  | "add_ingredient_placeholder"
+  | "add_button"
+  | "shopping_list_title"
+  | "shopping_list_desc"
+  | "shopping_list_empty"
+  | "shopping_list_add_placeholder"
+  | "delete"
+  | "add_from_recipe_title"
+  | "add_from_recipe_desc"
+  | "no_recipes_yet"
+;
 
 export const I18N: Record<Lang, Record<TKey, string>> = {
   da: {
@@ -134,7 +164,40 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     suggestions_title: "Forslag",
     suggestions_subtitle: "Hurtige tilføjelser baseret på det, der blev fundet.",
     add_suggestion: "Tilføj",
-  },
+
+    offers_title: "Tilbud",
+    offers_searching: "Søgning: {q}",
+    offers_no_search_yet: "Ingen søgning endnu",
+    offers_loading: "Henter...",
+    offers_count: "{n} tilbud",
+    offers_none_found: "Ingen tilbud fundet (eller alt blev filtreret fra som støj/irrelevant).",
+    offers_error_prefix: "Fejl: {err}",
+
+    store_guide_title: "Butiks-guidning",
+    store_guide_coverage_on: "Coverage på: {q}",
+    store_guide_no_missing_yet: "Ingen mangler endnu",
+    store_guide_loading: "Beregner...",
+    store_guide_count: "{n} butikker",
+    store_guide_none_scored: "Ingen butikker kunne scores (ingen tilbud matchede dine mangler).",
+    store_guide_error_prefix: "Fejl: {err}",
+
+    pantry_page_title: "Spisekammer",
+    pantry_page_desc: "Tjek af hvilke basisvarer og krydderier du har. Dette sendes med til opskriftsgeneratoren som “allowed pantry”.",
+
+      "add_to_shopping_list": "Tilføj til indkøbsliste",
+    "confirmed_list_help": "Bekræft ingredienser. Slet, redigér eller tilføj. Opskrifter genereres kun ud fra denne liste.",
+    "add_ingredient_placeholder": "Tilføj ingrediens",
+    "add_button": "Tilføj",
+    "shopping_list_title": "Indkøbsliste",
+    "shopping_list_desc": "Ting du vil købe (påvirker butiksguidning/tilbud - men ikke hvad der er i dit køleskab).",
+    "shopping_list_empty": "Ingen varer i indkøbsliste endnu.",
+    "shopping_list_add_placeholder": "Tilføj vare (fx mælk)",
+    "delete": "Slet",
+    "add_from_recipe_title": "Tilføj fra opskrift",
+    "add_from_recipe_desc": "Vælg en opskrift og læg dens mangler på indkøbslisten (ting du allerede har bliver ikke tilføjet).",
+    "no_recipes_yet": "Ingen opskrifter endnu. Kør opskrifter først.",
+    store_guide_coverage_label: "Dækning",
+},
   no: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -179,9 +242,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Legg til",
+    add_item_placeholder: "Legg til ingrediens (f.eks. \"sitron\")",
+    delete_item: "Slett",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -189,8 +252,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Legg til",
+
+    offers_title: "Offers",
+    offers_searching: "Søk: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Dekning for: {q}",
+    store_guide_coverage_label: "Dekning",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Legg til i handlelisten",
+    "confirmed_list_help": "Bekreft ingredienser. Slett, rediger eller legg til. Oppskrifter genereres kun fra denne listen.",
+    "add_ingredient_placeholder": "Legg til ingrediens",
+    "add_button": "Legg til",
+    "shopping_list_title": "Handleliste",
+    "shopping_list_desc": "Ting du vil kjøpe (påvirker butikguide/tilbud - men ikke hva som er i kjøleskapet ditt).",
+    "shopping_list_empty": "Ingen varer i handlelisten ennå.",
+    "shopping_list_add_placeholder": "Legg til vare (f.eks. melk)",
+    "delete": "Slett",
+    "add_from_recipe_title": "Legg til fra oppskrift",
+    "add_from_recipe_desc": "Velg en oppskrift og legg manglende varer til handlelisten (varer du allerede har blir ikke lagt til).",
+    "no_recipes_yet": "Ingen oppskrifter ennå. Generer oppskrifter først.",
+},
   sv: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -235,9 +331,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Hinzufügen",
+    add_item_placeholder: "Zutat hinzufügen (z.B. \"Zitrone\")",
+    delete_item: "Löschen",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -245,8 +341,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Hinzufügen",
+
+    offers_title: "Offers",
+    offers_searching: "Suche: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Abdeckung für: {q}",
+    store_guide_coverage_label: "Abdeckung",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Lägg till i inköpslistan",
+    "confirmed_list_help": "Bekräfta ingredienser. Ta bort, redigera eller lägg till. Recept genereras endast från den här listan.",
+    "add_ingredient_placeholder": "Lägg till ingrediens",
+    "add_button": "Lägg till",
+    "shopping_list_title": "Inköpslista",
+    "shopping_list_desc": "Saker du vill köpa (påverkar butiksguide/erbjudanden - men inte vad som finns i ditt kylskåp).",
+    "shopping_list_empty": "Inga varor i inköpslistan ännu.",
+    "shopping_list_add_placeholder": "Lägg till vara (t.ex. mjölk)",
+    "delete": "Ta bort",
+    "add_from_recipe_title": "Lägg till från recept",
+    "add_from_recipe_desc": "Välj ett recept och lägg till det som saknas i inköpslistan (saker du redan har läggs inte till).",
+    "no_recipes_yet": "Inga recept ännu. Generera recept först.",
+},
   de: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -291,9 +420,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Lägg till",
+    add_item_placeholder: "Lägg till ingrediens (t.ex. \"citron\")",
+    delete_item: "Ta bort",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -301,8 +430,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Lägg till",
+
+    offers_title: "Offers",
+    offers_searching: "Sök: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Täckning för: {q}",
+    store_guide_coverage_label: "Täckning",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Zur Einkaufsliste hinzufügen",
+    "confirmed_list_help": "Zutaten bestätigen. Löschen, bearbeiten oder hinzufügen. Rezepte werden nur aus dieser Liste generiert.",
+    "add_ingredient_placeholder": "Zutat hinzufügen",
+    "add_button": "Hinzufügen",
+    "shopping_list_title": "Einkaufsliste",
+    "shopping_list_desc": "Dinge, die du kaufen willst (beeinflusst Ladenführer/Angebote - aber nicht den Inhalt deines Kühlschranks).",
+    "shopping_list_empty": "Noch keine Artikel in der Einkaufsliste.",
+    "shopping_list_add_placeholder": "Artikel hinzufügen (z. B. Milch)",
+    "delete": "Löschen",
+    "add_from_recipe_title": "Aus Rezept hinzufügen",
+    "add_from_recipe_desc": "Wähle ein Rezept und füge fehlende Zutaten zur Einkaufsliste hinzu (Vorhandenes wird nicht hinzugefügt).",
+    "no_recipes_yet": "Noch keine Rezepte. Erstelle zuerst Rezepte.",
+},
   en: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -347,9 +509,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Ajouter",
+    add_item_placeholder: "Ajouter un ingrédient (ex. \"citron\")",
+    delete_item: "Supprimer",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -357,8 +519,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Ajouter",
+
+    offers_title: "Offers",
+    offers_searching: "Recherche: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Couverture pour: {q}",
+    store_guide_coverage_label: "Couverture",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Add to shopping list",
+    "confirmed_list_help": "Confirm ingredients. Delete, edit, or add. Recipes are generated only from this list.",
+    "add_ingredient_placeholder": "Add ingredient",
+    "add_button": "Add",
+    "shopping_list_title": "Shopping list",
+    "shopping_list_desc": "Items you want to buy (affects store guide/offers - but not what’s in your fridge).",
+    "shopping_list_empty": "No items in the shopping list yet.",
+    "shopping_list_add_placeholder": "Add item (e.g. milk)",
+    "delete": "Delete",
+    "add_from_recipe_title": "Add from recipe",
+    "add_from_recipe_desc": "Choose a recipe and add its missing items to the shopping list (items you already have won’t be added).",
+    "no_recipes_yet": "No recipes yet. Generate recipes first.",
+},
   fr: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -403,9 +598,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Añadir",
+    add_item_placeholder: "Añadir ingrediente (p. ej. \"limón\")",
+    delete_item: "Eliminar",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -413,8 +608,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Añadir",
+
+    offers_title: "Offers",
+    offers_searching: "Búsqueda: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Cobertura para: {q}",
+    store_guide_coverage_label: "Cobertura",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Ajouter à la liste de courses",
+    "confirmed_list_help": "Confirmez les ingrédients. Supprimez, modifiez ou ajoutez. Les recettes sont générées uniquement à partir de cette liste.",
+    "add_ingredient_placeholder": "Ajouter un ingrédient",
+    "add_button": "Ajouter",
+    "shopping_list_title": "Liste de courses",
+    "shopping_list_desc": "Articles que vous voulez acheter (affecte guide magasins/offres - mais pas ce qu’il y a dans votre frigo).",
+    "shopping_list_empty": "Aucun article dans la liste de courses pour le moment.",
+    "shopping_list_add_placeholder": "Ajouter un article (ex. lait)",
+    "delete": "Supprimer",
+    "add_from_recipe_title": "Ajouter depuis une recette",
+    "add_from_recipe_desc": "Choisissez une recette et ajoutez les éléments manquants à la liste de courses (ce que vous avez déjà ne sera pas ajouté).",
+    "no_recipes_yet": "Pas encore de recettes. Générez d’abord des recettes.",
+},
   it: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -459,9 +687,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Aggiungi",
+    add_item_placeholder: "Aggiungi ingrediente (es. \"limone\")",
+    delete_item: "Elimina",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -469,8 +697,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Aggiungi",
+
+    offers_title: "Offers",
+    offers_searching: "Ricerca: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Copertura per: {q}",
+    store_guide_coverage_label: "Copertura",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Aggiungi alla lista della spesa",
+    "confirmed_list_help": "Conferma gli ingredienti. Elimina, modifica o aggiungi. Le ricette vengono generate solo da questo elenco.",
+    "add_ingredient_placeholder": "Aggiungi ingrediente",
+    "add_button": "Aggiungi",
+    "shopping_list_title": "Lista della spesa",
+    "shopping_list_desc": "Cose che vuoi comprare (influenza guida negozi/offerte - ma non ciò che hai in frigo).",
+    "shopping_list_empty": "Nessun elemento nella lista della spesa per ora.",
+    "shopping_list_add_placeholder": "Aggiungi elemento (es. latte)",
+    "delete": "Elimina",
+    "add_from_recipe_title": "Aggiungi dalla ricetta",
+    "add_from_recipe_desc": "Scegli una ricetta e aggiungi alla lista della spesa ciò che manca (ciò che hai già non verrà aggiunto).",
+    "no_recipes_yet": "Nessuna ricetta ancora. Genera prima le ricette.",
+},
   es: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -515,9 +776,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "Adicionar",
+    add_item_placeholder: "Adicionar ingrediente (ex. \"limão\")",
+    delete_item: "Eliminar",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -525,8 +786,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "Adicionar",
+
+    offers_title: "Offers",
+    offers_searching: "Pesquisa: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Cobertura para: {q}",
+    store_guide_coverage_label: "Cobertura",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Añadir a la lista de la compra",
+    "confirmed_list_help": "Confirma ingredientes. Elimina, edita o añade. Las recetas se generan solo a partir de esta lista.",
+    "add_ingredient_placeholder": "Añadir ingrediente",
+    "add_button": "Añadir",
+    "shopping_list_title": "Lista de la compra",
+    "shopping_list_desc": "Cosas que quieres comprar (afecta guía de tiendas/ofertas - pero no lo que hay en tu nevera).",
+    "shopping_list_empty": "Aún no hay artículos en la lista de la compra.",
+    "shopping_list_add_placeholder": "Añadir artículo (p. ej. leche)",
+    "delete": "Eliminar",
+    "add_from_recipe_title": "Añadir desde receta",
+    "add_from_recipe_desc": "Elige una receta y añade lo que falta a la lista de la compra (lo que ya tienes no se añadirá).",
+    "no_recipes_yet": "Aún no hay recetas. Genera recetas primero.",
+},
   pt: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -571,9 +865,9 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     scan_items_subtitle: "This is what the model detected in the image.",
     confirm_items_title: "Confirm ingredients",
     confirm_items_subtitle: "Delete, edit, or add - recipes are generated ONLY from this list.",
-    add_item: "Add",
-    add_item_placeholder: "Add ingredient (e.g. \"lemon\")",
-    delete_item: "Delete",
+    add_item: "إضافة",
+    add_item_placeholder: "أضف مكوّنًا (مثلا \"ليمون\")",
+    delete_item: "حذف",
     no_confirmed_items: "No confirmed ingredients yet.",
     dedupe_hint: "Tip: we auto-dedupe (case-insensitive) and trim whitespace.",
     missing_confirmed_items: "Confirm ingredients first (the list is empty).",
@@ -581,8 +875,41 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     missing_items_none: "No missing items - only fridge + pantry were used.",
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
-    add_suggestion: "Add",
-  },
+    add_suggestion: "إضافة",
+
+    offers_title: "Offers",
+    offers_searching: "بحث: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "التغطية لـ: {q}",
+    store_guide_coverage_label: "التغطية",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "Adicionar à lista de compras",
+    "confirmed_list_help": "Confirme os ingredientes. Exclua, edite ou adicione. As receitas são geradas apenas a partir desta lista.",
+    "add_ingredient_placeholder": "Adicionar ingrediente",
+    "add_button": "Adicionar",
+    "shopping_list_title": "Lista de compras",
+    "shopping_list_desc": "Itens que você quer comprar (afeta guia de lojas/ofertas - mas não o que está na sua geladeira).",
+    "shopping_list_empty": "Ainda não há itens na lista de compras.",
+    "shopping_list_add_placeholder": "Adicionar item (ex.: leite)",
+    "delete": "Eliminar",
+    "add_from_recipe_title": "Adicionar da receita",
+    "add_from_recipe_desc": "Escolha uma receita e adicione os itens em falta à lista de compras (itens que você já tem não serão adicionados).",
+    "no_recipes_yet": "Ainda não há receitas. Gere receitas primeiro.",
+},
   ar: {
     brand: "QARTIGO",
     title: "FoodFolder",
@@ -636,7 +963,40 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     suggestions_title: "Suggestions",
     suggestions_subtitle: "Quick adds based on what was found.",
     add_suggestion: "Add",
-  },
+
+    offers_title: "Offers",
+    offers_searching: "Search: {q}",
+    offers_no_search_yet: "No search yet",
+    offers_loading: "Loading...",
+    offers_count: "{n} offers",
+    offers_none_found: "No offers found (or everything was filtered out as noise/irrelevant).",
+    offers_error_prefix: "Error: {err}",
+
+    store_guide_title: "Store guide",
+    store_guide_coverage_on: "Coverage for: {q}",
+    store_guide_no_missing_yet: "No missing items yet",
+    store_guide_loading: "Scoring...",
+    store_guide_count: "{n} stores",
+    store_guide_none_scored: "No stores could be scored (no offers matched your missing items).",
+    store_guide_error_prefix: "Error: {err}",
+
+    pantry_page_title: "Pantry",
+    pantry_page_desc: "Check which basics and spices you have. This is sent to the recipe generator as “allowed pantry”.",
+
+      "add_to_shopping_list": "أضف إلى قائمة التسوق",
+    "confirmed_list_help": "أكد المكونات. احذف أو عدّل أو أضف. يتم إنشاء الوصفات من هذه القائمة فقط.",
+    "add_ingredient_placeholder": "أضف مكونًا",
+    "add_button": "أضف",
+    "shopping_list_title": "قائمة التسوق",
+    "shopping_list_desc": "أشياء تريد شراءها (تؤثر على دليل المتاجر/العروض - لكنها لا تؤثر على ما في ثلاجتك).",
+    "shopping_list_empty": "لا توجد عناصر في قائمة التسوق بعد.",
+    "shopping_list_add_placeholder": "أضف عنصرًا (مثل الحليب)",
+    "delete": "حذف",
+    "add_from_recipe_title": "أضف من وصفة",
+    "add_from_recipe_desc": "اختر وصفة وأضف ما ينقص إلى قائمة التسوق (لن تتم إضافة ما لديك بالفعل).",
+    "no_recipes_yet": "لا توجد وصفات بعد. أنشئ الوصفات أولاً.",
+    store_guide_coverage_label: "التغطية",
+},
 };
 
 export function t(lang: Lang, key: TKey): string {

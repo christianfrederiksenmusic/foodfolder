@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Lang, t } from "../i18n";
 
 type StoreRow = {
   store: string;
@@ -36,7 +37,11 @@ function isoToDaDate(iso: string | null) {
   return d.toLocaleDateString("da-DK");
 }
 
-export default function StoreGuidePanel(props: { queries: string[] }) {
+export default function StoreGuidePanel(props: { queries: string[];
+  displayQueries?: string[]; lang: Lang }) {
+  const fmt = (s: string, vars: Record<string, string>) =>
+    s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
+
   const queries = useMemo(
     () => (props.queries || []).map((s) => s.trim()).filter(Boolean).slice(0, 10),
     [props.queries]
@@ -79,7 +84,7 @@ export default function StoreGuidePanel(props: { queries: string[] }) {
     return () => {
       cancelled = true;
     };
-  }, [queries]);
+  }, [queries.join("|")]);
 
   const stores = data?.stores || [];
   const top3 = stores.slice(0, 3);
@@ -88,21 +93,21 @@ export default function StoreGuidePanel(props: { queries: string[] }) {
     <section className="mt-4 w-full rounded-2xl border border-black/10 bg-white/70 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Butiks-guidning</h2>
+          <h2 className="text-lg font-semibold">{t(props.lang, "store_guide_title")}</h2>
           <p className="text-sm opacity-70">
-            {queries.length ? `Coverage på: ${queries.join(", ")}` : "Ingen mangler endnu"}
+            {queries.length ? fmt(t(props.lang, "store_guide_coverage_on"), { q: queries.join(", ")  }) : t(props.lang, "store_guide_no_missing_yet")}
           </p>
         </div>
-        <div className="text-sm opacity-70">{loading ? "Beregner..." : `${top3.length} butikker`}</div>
+        <div className="text-sm opacity-70">{loading ? t(props.lang, "store_guide_loading") : fmt(t(props.lang, "store_guide_count"), { n: String(top3.length)  })}</div>
       </div>
 
       {err && (
-        <div className="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm">Fejl: {err}</div>
+        <div className="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm">{fmt(t(props.lang, "store_guide_error_prefix"), { err })}</div>
       )}
 
       {!err && !loading && queries.length > 0 && top3.length === 0 && (
         <div className="mt-3 rounded-xl border border-black/10 bg-white p-3 text-sm opacity-80">
-          Ingen butikker kunne scores (ingen tilbud matchede dine mangler).
+          {t(props.lang, "store_guide_none_scored")}
         </div>
       )}
 

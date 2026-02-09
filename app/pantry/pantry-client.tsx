@@ -1,56 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Lang, t } from "../i18n";
+import { PANTRY_KEYS, PANTRY_LABELS } from "./catalog";
 import { loadPantryValues, savePantryValues } from "./storage";
 
 type PantryItem = { key: string; label: string; value: string };
 
 // Canonical values are what we store + send downstream
-const PANTRY_ITEMS: PantryItem[] = [
-  { key: "salt", label: "Salt", value: "salt" },
-  { key: "pepper", label: "Peber", value: "black pepper" },
-  { key: "oil", label: "Olie (neutral/oliven)", value: "cooking oil" },
-  { key: "butter", label: "Smør", value: "butter" },
-  { key: "vinegar", label: "Eddike", value: "vinegar" },
-  { key: "soy_sauce", label: "Sojasauce", value: "soy sauce" },
-  { key: "honey", label: "Honning", value: "honey" },
-  { key: "sugar", label: "Sukker", value: "sugar" },
-  { key: "flour", label: "Hvedemel", value: "wheat flour" },
-  { key: "rice", label: "Ris", value: "rice" },
-  { key: "pasta", label: "Pasta", value: "pasta" },
-  { key: "oats", label: "Havregryn", value: "oats" },
-  { key: "breadcrumbs", label: "Rasp", value: "breadcrumbs" },
-  { key: "tomato_paste", label: "Tomatpuré", value: "tomato paste" },
-  { key: "canned_tomatoes", label: "Hakkede tomater (dåse)", value: "canned tomatoes" },
-  { key: "coconut_milk", label: "Kokosmælk", value: "coconut milk" },
-  { key: "mustard", label: "Sennep", value: "mustard" },
-  { key: "ketchup", label: "Ketchup", value: "ketchup" },
-  { key: "mayo", label: "Mayonnaise", value: "mayonnaise" },
-  { key: "garlic_powder", label: "Hvidløgspulver", value: "garlic powder" },
-  { key: "paprika", label: "Paprika", value: "paprika" },
-  { key: "cumin", label: "Spidskommen", value: "cumin" },
-  { key: "curry", label: "Karri", value: "curry powder" },
-  { key: "chili_flakes", label: "Chiliflager", value: "chili flakes" },
-  { key: "oregano", label: "Oregano", value: "oregano" },
-  { key: "basil", label: "Basilikum", value: "basil" },
-  { key: "thyme", label: "Timian", value: "thyme" },
-  { key: "rosemary", label: "Rosmarin", value: "rosemary" },
-  { key: "cinnamon", label: "Kanel", value: "cinnamon" },
-  { key: "vanilla_sugar", label: "Vaniljesukker", value: "vanilla sugar" },
-];
+const PANTRY_ITEMS = PANTRY_KEYS.map((key) => ({
+  key,
+  value: key, // stored canonical pantry key
+}));
 
 function toSet(values: string[]): Set<string> {
   return new Set((values || []).map(String));
 }
 
-export default function PantryClient() {
+export default function PantryClient(props: { lang: Lang }) {
   const list = useMemo(() => PANTRY_ITEMS, []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // loadPantryValues() also migrates historical wrong formats and writes back
     setSelected(toSet(loadPantryValues()));
-  }, []);
+  });
 
   const selectedCount = selected.size;
 
@@ -116,7 +90,7 @@ export default function PantryClient() {
                 onChange={() => toggle(it.value)}
                 className="h-4 w-4"
               />
-              <span className="text-sm text-slate-800">{it.label}</span>
+              <span className="text-sm text-slate-800">{PANTRY_LABELS[props.lang][it.key] ?? it.key}</span>
             </label>
           );
         })}

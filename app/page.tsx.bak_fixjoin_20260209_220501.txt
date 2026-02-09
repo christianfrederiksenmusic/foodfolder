@@ -481,26 +481,17 @@ const [constraints, setConstraints] = useState<string>(
     ensureDaCanonicalList,
   } = useLangRuntime(allCanonicalForDisplay);
 
-  
-  const ensureDaCanonicalListRef = useRef(ensureDaCanonicalList);
-  useEffect(() => {
-    ensureDaCanonicalListRef.current = ensureDaCanonicalList;
-  }, [ensureDaCanonicalList]);
-
-// Canonical market-language (Danish) lists used for offer search + store guide.
+  // Canonical market-language (Danish) lists used for offer search + store guide.
   // We keep UI language (display) separate from query language (Danish), so offer search remains stable.
-  const [missingTodayDa, setMissingTodayDa] = useState<string[]>([]);
-  const [offerQueriesDa, setOfferQueriesDa] = useState<string[]>([]);
+  const [missingTodayDa.join("|"), setMissingTodayDa] = useState<string[]>([]);
+  const [offerQueriesDa.join("|"), setOfferQueriesDa] = useState<string[]>([]);
 
-  
-  const missingTodayDaKey = useMemo(() => missingTodayDa.join("|"), [missingTodayDa]);
-  const offerQueriesDaKey = useMemo(() => offerQueriesDa.join("|"), [offerQueriesDa]);
-useEffect(() => {
+  useEffect(() => {
     let cancelled = false;
 
     async function run() {
       try {
-        const missDa = await ensureDaCanonicalListRef.current(missingToday);
+        const missDa = await ensureDaCanonicalList(missingToday);
         if (cancelled) return;
         setMissingTodayDa(missDa);
         setOfferQueriesDa(deriveOfferQueries({ missing: missDa, recipesResult }));
@@ -516,7 +507,7 @@ useEffect(() => {
     return () => {
       cancelled = true;
     };
-  }, [recipesResult, missingToday]);
+  }, [recipesResult, missingToday, ensureDaCanonicalList]);
 
   const missingTodayDisplay = useMemo(
     () => (missingTodayDa || []).map((x) => displayNameFor(x)).filter(Boolean),
@@ -637,7 +628,7 @@ useEffect(() => {
       setConstraints("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  });
+  }, []);
 
   useEffect(() => {
     let dead = false;
@@ -648,12 +639,13 @@ useEffect(() => {
         const v = typeof j?.sha === "string" ? j.sha : "";
         setSha(v);
       })
-      .catch(() => {});
+      .catch(() => {}, []);
     return () => {
       dead = true;
     };
   }, []);
-const originalBytes = useMemo(
+
+  const originalBytes = useMemo(
     () => (originalDataUrl ? dataUrlByteSize(originalDataUrl) : 0),
     [originalDataUrl],
   );
@@ -928,7 +920,7 @@ async function addShopping() {
     const missRaw = dedupeCaseInsensitive(getRecipeMissingItems(r));
 
     // Canonicalize missing-items to Danish (marketLang) so offers/matching keep working.
-    const missDa = await ensureDaCanonicalListRef.current(missRaw);
+    const missDa = await ensureDaCanonicalList(missRaw);
 
     // Do NOT add items you already have (fridge + pantry)
     const pantryLocal = loadPantryLocal();
