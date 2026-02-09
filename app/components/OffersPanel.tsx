@@ -224,9 +224,18 @@ export default function OffersPanel(props: { queries: string[];
 
       
       <div className="mt-3 space-y-2">
-        {offers.slice(0, 30).map((o) => {
+        {offers.slice(0, 30).map((o, idx) => {
           const key =
-            ((o as any).sourceUrl || (o as any).source_url || (o as any).url || (o as any).offerUrl || (o as any).publicId || (o as any).offerId || (o as any).name || Math.random().toString(36));
+            String(
+              (o as any).sourceUrl ||
+                (o as any).source_url ||
+                (o as any).url ||
+                (o as any).offerUrl ||
+                (o as any).publicId ||
+                (o as any).offerId ||
+                // last resort: deterministic composite (no Math.random)
+                ((o as any).name ? `${(o as any).store || ""}|${(o as any).name}` : "")
+            ) || `fallback|${idx}`;
 
           const href =
             ((o as any).sourceUrl || (o as any).source_url || (o as any).url || (o as any).offerUrl || "");

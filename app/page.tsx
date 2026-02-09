@@ -636,8 +636,7 @@ useEffect(() => {
     if (constraints === t("da", "constraints_placeholder")) {
       setConstraints("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  });
+  }, [constraints]);
 
   useEffect(() => {
     let dead = false;
