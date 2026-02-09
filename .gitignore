@@ -47,3 +47,10 @@ _backup_ui/
 .env*.local
 _bundle_archive/
 quartigo_snapshot_*.txt
+# Local backup / patch artifacts
+*snapshot*.txt
+*bundle*.zip
+*patch*.zip
+*bundle*.txt
+_trash_artifacts_*/
+# macOS
