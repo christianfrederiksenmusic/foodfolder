@@ -32,36 +32,6 @@ function normalizeText(x: any): string {
     .trim();
 }
 
-function tokenizeQuery(q: string): string[] {
-  const n = normalizeText(q);
-  if (!n) return [];
-  return n
-    .split(" ")
-    .map((t) => t.trim())
-    .filter((t) => t.length >= 3);
-}
-
-function offerMatchesQuery(offerName: string | null, query: string): boolean {
-  const nameNorm = normalizeText(offerName || "");
-  if (!nameNorm) return false;
-
-  const toks = tokenizeQuery(query);
-  if (toks.length === 0) return false;
-
-  for (const t of toks) {
-    if (
-      nameNorm === t ||
-      nameNorm.includes(` ${t} `) ||
-      nameNorm.startsWith(`${t} `) ||
-      nameNorm.endsWith(` ${t}`) ||
-      nameNorm.includes(t)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function uniqStrings(xs: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -74,15 +44,172 @@ function uniqStrings(xs: string[]): string[] {
   return out;
 }
 
+function isAllowedStore(store: string | null): boolean {
+  const s = normalizeText(store || "");
+
+  const deny = ["fleggaard", "calle", "bordershop", "border shop", "helsam"];
+  for (const d of deny) {
+    if (s.includes(d)) return false;
+  }
+
+  const allow = [
+    "føtex",
+    "fotex",
+    "bilka",
+    "netto",
+    "rema",
+    "rema 1000",
+    "lidl",
+    "meny",
+    "spar",
+    "min købmand",
+    "min kobmand",
+    "superbrugsen",
+    "kvickly",
+    "brugsen",
+    "dagli brugsen",
+    "dagli'brugsen",
+    "365discount",
+    "365 discount",
+    "coop",
+    "abc lavpris",
+    "løvbjerg",
+    "lovbjerg",
+    "nemlig",
+    "nemlig com",
+  ];
+
+  for (const a of allow) {
+    if (s.includes(normalizeText(a))) return true;
+  }
+
+  return false;
+}
+
+function isJunkOfferName(name: string | null): boolean {
+  const n = normalizeText(name || "");
+  if (!n) return false;
+
+  const denySub = [
+    "saftevand",
+    "sodavand",
+    "cola",
+    "lemonade",
+    "energidrik",
+    "energy drink",
+    "proteinbar",
+    "protein bar",
+    "müeslibar",
+    "mueslibar",
+    "snackbar",
+    "slik",
+    "chokolade",
+    "chips",
+    "kiks",
+    "bolche",
+    "vin",
+    "øl",
+    "spiritus",
+    "cocktail",
+  ];
+  for (const d of denySub) {
+    if (n.includes(normalizeText(d))) return true;
+  }
+  if (n.includes("juice") || n.includes("saft")) return true;
+  return false;
+}
+
+function hasWholeWord(haystackNorm: string, needleNorm: string): boolean {
+  if (!haystackNorm || !needleNorm) return false;
+  const h = ` ${haystackNorm} `;
+  const n = ` ${needleNorm} `;
+  return h.includes(n);
+}
+
+function tokenizeQuery(q: string): string[] {
+  const n = normalizeText(q);
+  if (!n) return [];
+  return n
+    .split(" ")
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2);
+}
+
+function isMilkQuery(qNorm: string): boolean {
+  return qNorm === "mælk" || qNorm === "milk";
+}
+
+function milkMatch(nameNorm: string): boolean {
+  // Reject flavored milk (including compounds like "kakaoskummetmælk")
+  const denySub = ["kakao", "chokolade", "jordbær", "vanil", "protein", "shake"];
+  if (nameNorm.includes("mælk")) {
+    for (const d of denySub) {
+      if (nameNorm.includes(d)) return false;
+    }
+  }
+
+  const allowExact = new Set([
+    "mælk",
+    "letmælk",
+    "minimælk",
+    "skummetmælk",
+    "skummemælk",
+    "sødmælk",
+    "kærnemælk",
+  ]);
+
+  const toks = nameNorm.split(" ").map((t) => t.trim()).filter(Boolean);
+  for (const t of toks) {
+    if (allowExact.has(t)) return true;
+  }
+  if (hasWholeWord(nameNorm, "mælk")) return true;
+  return false;
+}
+
+function offerMatchesQuery(offerName: string | null, query: string): boolean {
+  const nameNorm = normalizeText(offerName || "");
+  const qNorm = normalizeText(query || "");
+  if (!nameNorm || !qNorm) return false;
+
+  if (isMilkQuery(qNorm)) return milkMatch(nameNorm);
+
+  const toks = tokenizeQuery(qNorm).filter((t) => t.length >= 3);
+  if (toks.length === 0) return false;
+
+  for (const t of toks) {
+    if (hasWholeWord(nameNorm, t)) return true;
+  }
+  return false;
+}
+
+function expandQuery(q: string): string[] {
+  const qNorm = normalizeText(q);
+  if (!qNorm) return [];
+  if (qNorm === "mælk" || qNorm === "milk") {
+    return uniqStrings([
+      "mælk",
+      "skummetmælk",
+      "skummemælk",
+      "letmælk",
+      "sødmælk",
+      "minimælk",
+      "kærnemælk",
+      "økologisk mælk",
+    ]);
+  }
+  if (qNorm.includes("lime") && (qNorm.includes("juice") || qNorm.includes("saft"))) {
+    return ["lime", "limes", "limefrugt"];
+  }
+  return [q];
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
 
   const qsParam = (url.searchParams.get("qs") || "").trim();
   const qParams = url.searchParams.getAll("q").map((x) => x.trim()).filter(Boolean);
 
-  const queries = uniqStrings(
-    qsParam ? qsParam.split(",").map((x) => x.trim()) : qParams
-  ).slice(0, 10);
+  const queries = uniqStrings(qsParam ? qsParam.split(",").map((x) => x.trim()) : qParams).slice(0, 10);
 
   if (queries.length === 0) {
     const empty: ApiResponse = { queries: [], totalQueries: 0, stores: [] };
@@ -91,12 +218,37 @@ export async function GET(req: Request) {
 
   const results = await Promise.all(
     queries.map(async (q) => {
-      try {
-        const all = await etaSearchOffers(q, { limit: 40, delayMs: 120 });
-        return { q, offers: (all || []).filter((x) => x && x.price !== null) as EtaOffer[] };
-      } catch {
-        return { q, offers: [] as EtaOffer[] };
+      const expanded = expandQuery(q);
+      const merged: EtaOffer[] = [];
+      const seen = new Set<string>();
+
+      // parallel per query too (small fanout)
+      const fetched = await Promise.all(
+        expanded.map(async (eq) => {
+          try {
+            const all = await etaSearchOffers(eq, { limit: 40, delayMs: 60 });
+            return (all || []) as EtaOffer[];
+          } catch {
+            return [] as EtaOffer[];
+          }
+        })
+      );
+
+      for (const arr of fetched) {
+        for (const o of arr) {
+          if (!o || o.price === null) continue;
+          if (!isAllowedStore(o.store || null)) continue;
+          if (isJunkOfferName(o.name || null)) continue;
+
+          const key = (o.sourceUrl || "").trim();
+          if (!key) continue;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          merged.push(o);
+        }
       }
+
+      return { q, offers: merged };
     })
   );
 
@@ -121,8 +273,8 @@ export async function GET(req: Request) {
 
     let bestPrice: number | null = null;
     for (const o of offers) {
-      // mild tie-break: any token match against concatenated queries
-      if (!offerMatchesQuery(o.name, queries.join(" "))) continue;
+      const anyOk = queries.some((q) => offerMatchesQuery(o.name, q));
+      if (!anyOk) continue;
       const p = o.price;
       if (typeof p === "number" && Number.isFinite(p)) {
         if (bestPrice === null || p < bestPrice) bestPrice = p;

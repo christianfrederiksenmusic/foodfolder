@@ -417,6 +417,7 @@ const fileRef = useRef<HTMLInputElement | null>(null);
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
   // Shopping list (things you plan to buy; NOT things you have)
   const [shoppingItems, setShoppingItems] = useState<string[]>([]);
+  const [selectedRecipeIdx, setSelectedRecipeIdx] = useState<number>(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [newConfirmedItem, setNewConfirmedItem] = useState<string>("");
   const [newShoppingItem, setNewShoppingItem] = useState<string>("");
@@ -447,11 +448,11 @@ const [error, setError] = useState("");
   }, [recipesResult]);
 
   // 'Mangler i dag' = what recipes say you lack + whatever you manually add to shopping list
+    // 'Mangler i dag' is the shopping list (the action layer). Not derived from recipes.
   const missingToday = useMemo(() => {
-    return dedupeCaseInsensitive([...(missingFromRecipes || []), ...(shoppingItems || [])]);
-  }, [missingFromRecipes, shoppingItems]);
-
-  const offerQueries = useMemo(() => {
+    return dedupeCaseInsensitive((shoppingItems || []).map((x) => normalizeItem(x)).filter(Boolean));
+  }, [shoppingItems]);
+const offerQueries = useMemo(() => {
     // Offers should be driven by what you need to buy (missingToday)
     return deriveOfferQueries({ missing: missingToday, recipesResult });
   }, [recipesResult, missingToday]);
@@ -471,6 +472,82 @@ const [constraints, setConstraints] = useState<string>(
       if (saved && LANGS.some((x) => x.code === saved)) setLang(saved);
     } catch {}
   }, []);
+
+  // --- UI: Fridge editor (single placement) ---
+  const renderFridgeEditor = () => {
+    return (
+      <div>
+        <div className="text-sm font-semibold text-slate-900">
+          {t(lang, "confirm_items_title")}
+        </div>
+        <div className="mt-1 text-sm text-slate-600">
+          {t(lang, "confirm_items_subtitle")}
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {confirmedItems.length ? (
+            confirmedItems.map((name, idx) => (
+              <div
+                key={`${name}-${idx}`}
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2"
+              >
+                <input
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                  value={name}
+                  onChange={(e) => updateConfirmedAt(idx, e.target.value)}
+                  onBlur={(e) => updateConfirmedAt(idx, e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="h-9 w-9 rounded-xl border border-slate-200 bg-white text-lg font-semibold text-slate-600 hover:bg-slate-50"
+                  onClick={() => removeConfirmedAt(idx)}
+                  aria-label={t(lang, "delete_item")}
+                  title={t(lang, "delete_item")}
+                >
+                  ×
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                  onClick={() => addToShoppingFromPantry(name)}
+                >
+                  Tilføj til indkøbsliste
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+              {t(lang, "no_confirmed_items")}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+            value={newConfirmedItem}
+            onChange={(e) => setNewConfirmedItem(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addConfirmed();
+              }
+            }}
+            placeholder={t(lang, "add_item_placeholder")}
+          />
+          <button
+            type="button"
+            className="h-10 whitespace-nowrap rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            onClick={addConfirmed}
+          >
+            {t(lang, "add_item")}
+          </button>
+        </div>
+
+        <div className="mt-2 text-xs text-slate-500">{t(lang, "dedupe_hint")}</div>
+      </div>
+    );
+  };
 
   
 
@@ -790,11 +867,48 @@ setItemsLang(lang);
     setShoppingItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function addShopping() {
+  
+  function addToShoppingFromPantry(item: string) {
+    const it = normalizeItem(item);
+    if (!it) return;
+    setShoppingItems((prev) => dedupeCaseInsensitive([...(prev || []), it]));
+  }
+
+function addShopping() {
     const v = normalizeItem(newShoppingItem);
     if (!v) return;
     setShoppingItems((prev) => dedupeCaseInsensitive([...prev, v]));
     setNewShoppingItem("");
+  }
+
+  function getRecipeMissingItems(r: any): string[] {
+    const miss = Array.isArray(r?.missing_items) ? r.missing_items : [];
+    const out: string[] = [];
+    for (const m of miss) {
+      if (typeof m === "string") out.push(m);
+      else if (m && typeof m === "object") {
+        if (typeof m.item === "string") out.push(m.item);
+        else if (typeof m.name === "string") out.push(m.name);
+      }
+    }
+    return out;
+  }
+
+  function commitMissingFromSelectedRecipe() {
+    if (!recipesResult || (recipesResult as any).ok !== true) return;
+    const recs = Array.isArray((recipesResult as any).recipes) ? (recipesResult as any).recipes : [];
+    if (!recs.length) return;
+    const r = recs[Math.max(0, Math.min(selectedRecipeIdx, recs.length - 1))];
+    const miss = dedupeCaseInsensitive(getRecipeMissingItems(r));
+
+    // Do NOT add items you already have in pantry
+    const pantrySet = new Set((confirmedItems || []).map((x) => normalizeItem(x)).filter(Boolean));
+    const filtered = miss
+      .map((x) => normalizeItem(x))
+      .filter((x) => x && !pantrySet.has(x));
+
+    if (!filtered.length) return;
+    setShoppingItems((prev) => dedupeCaseInsensitive([...(prev || []), ...filtered]));
   }
 
 
@@ -967,30 +1081,9 @@ setItemsLang(lang);
 
 
 
-              <div className="mt-4 w-full rounded-2xl border border-black/10 bg-white/70 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">Mangler i dag</h2>
-                    <p className="text-sm opacity-70">
-                      {missingToday.length ? `Liste: ${missingToday.join(", ")}` : "Ingen mangler endnu"}
-                    </p>
-                  </div>
-                </div>
-
-                {missingToday.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {missingToday.map((m) => (
-                      <span key={m} className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs opacity-80">
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
               <StoreGuidePanel queries={missingToday} />
 
-              <OffersPanel queries={offerQueries} />
+              <OffersPanel queries={missingToday} />
 
               {error ? (
                 <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
@@ -1035,74 +1128,72 @@ setItemsLang(lang);
                     {apiResult.error}
                   </div>
                 </div>
-              ) : sortedItems.length ? (
-                <div className="space-y-2">
-                  {sortedItems.map((it, idx) => (
-                    <div
-                      key={`${it.name}-${idx}`}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
-                    >
-                      <div className="text-sm font-semibold text-slate-900">
-                        {it.name}
-                      </div>
-                      {typeof it.confidence === "number" ? (
-                        <div className="text-xs font-semibold text-slate-500">
-                          {Math.round(it.confidence * 100)}%
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center">
-                  <div className="text-sm font-semibold text-slate-900">
-                    {t(lang, "no_items_title")}
-                  </div>
-                  <div className="mt-2 text-sm text-slate-600">
-                    {t(lang, "no_items_subtitle")}
-                  </div>
-                </div>
-              )}
-              <div className="mt-6">
-                <div className="text-sm font-semibold text-slate-900">
-                  {t(lang, "confirm_items_title")}
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {t(lang, "confirm_items_subtitle")}
-                </div>
+                <>
+                  {renderFridgeEditor()}
 
-                <div className="mt-3 space-y-2">
-                  
-                {suggestions.length ? (
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-sm font-semibold text-slate-900">
-                      {t(lang, "suggestions_title")}
+                  <details className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                      Vis analysedetaljer
+                    </summary>
+                    <div className="mt-3">
+                      {sortedItems.length ? (
+                        <div className="space-y-2">
+                          {sortedItems.map((it, idx) => (
+                            <div
+                              key={`${it.name}-${idx}`}
+                              className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                            >
+                              <div className="text-sm font-semibold text-slate-900">
+                                {it.name}
+                              </div>
+                              {typeof it.confidence === "number" ? (
+                                <div className="text-xs font-semibold text-slate-500">
+                                  {Math.round(it.confidence * 100)}%
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                          {t(lang, "no_items_subtitle")}
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      {t(lang, "suggestions_subtitle")}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {suggestions.map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800 hover:bg-slate-50"
-                          onClick={() => {
-                            setShoppingItems((prev) => dedupeCaseInsensitive([...prev, sug]));
-                            setSuggestions((prev) => prev.filter((x) => x !== sug));
-                          }}
-                          title={t(lang, "add_suggestion")}
-                        >
-                          <span>{sug}</span>
-                          <span className="text-xs text-slate-500">{t(lang, "add_suggestion")}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                  </details>
 
+                  {suggestions.length ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {t(lang, "suggestions_title")}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600">
+                        {t(lang, "suggestions_subtitle")}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {suggestions.map((sug) => (
+                          <button
+                            key={sug}
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800 hover:bg-slate-50"
+                            onClick={() => {
+                              setShoppingItems((prev) => dedupeCaseInsensitive([...prev, sug]));
+                              setSuggestions((prev) => prev.filter((x) => x !== sug));
+                            }}
+                            title={t(lang, "add_suggestion")}
+                          >
+                            <span>{sug}</span>
+                            <span className="text-xs text-slate-500">
+                              {t(lang, "add_suggestion")}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <div className="text-sm font-semibold text-slate-900">Indkøbsliste</div>
                   <div className="mt-1 text-xs text-slate-600">
                     Ting du vil købe (påvirker butiksguidning/tilbud - men ikke hvad der er i dit køleskab).
@@ -1157,82 +1248,42 @@ setItemsLang(lang);
                       Tilføj
                     </button>
                   </div>
-                </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-sm font-semibold text-slate-900">Mangler i dag</div>
-                  <div className="mt-1 text-xs text-slate-600">
-                    Udledt af opskrifternes missing-items + din indkøbsliste.
-                  </div>
-                  {missingToday.length ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {missingToday.map((m) => (
-                        <span key={m} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800">
-                          {m}
-                        </span>
-                      ))}
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                    <div className="text-sm font-semibold text-slate-900">Tilføj fra opskrift</div>
+                    <div className="mt-1 text-xs text-slate-600">
+                      Vælg en opskrift og læg dens mangler på indkøbslisten (ting du allerede har bliver ikke tilføjet).
                     </div>
-                  ) : (
-                    <div className="mt-2 text-sm text-slate-600">Ingen mangler endnu.</div>
-                  )}
-                </div>
 
-{confirmedItems.length ? (
-                    confirmedItems.map((name, idx) => (
-                      <div
-                        key={`${name}-${idx}`}
-                        className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2"
-                      >
-                        <input
-                          className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                          value={name}
-                          onChange={(e) => updateConfirmedAt(idx, e.target.value)}
-                          onBlur={(e) => updateConfirmedAt(idx, e.target.value)}
-                        />
+                    {recipesResult && (recipesResult as any).ok === true && Array.isArray((recipesResult as any).recipes) && (recipesResult as any).recipes.length ? (
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={selectedRecipeIdx}
+                          onChange={(e) => setSelectedRecipeIdx(Number(e.target.value) || 0)}
+                        >
+                          {(recipesResult as any).recipes.map((r: any, idx: number) => (
+                            <option key={idx} value={idx}>
+                              {r?.title || r?.name || `Opskrift ${idx + 1}`}
+                            </option>
+                          ))}
+                        </select>
+
                         <button
                           type="button"
-                          className="h-9 w-9 rounded-xl border border-slate-200 bg-white text-lg font-semibold text-slate-600 hover:bg-slate-50"
-                          onClick={() => removeConfirmedAt(idx)}
-                          aria-label={t(lang, "delete_item")}
-                          title={t(lang, "delete_item")}
+                          className="h-10 whitespace-nowrap rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                          onClick={commitMissingFromSelectedRecipe}
                         >
-                          ×
+                          Tilføj til indkøbsliste
                         </button>
                       </div>
-                    ))
-                  ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                      {t(lang, "no_confirmed_items")}
-                    </div>
-                  )}
+                    ) : (
+                      <div className="mt-2 text-sm text-slate-600">Ingen opskrifter endnu. Kør opskrifter først.</div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <input
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    value={newConfirmedItem}
-                    onChange={(e) => setNewConfirmedItem(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addConfirmed();
-                      }
-                    }}
-                    placeholder={t(lang, "add_item_placeholder")}
-                  />
-                  <button
-                    type="button"
-                    className="h-10 whitespace-nowrap rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                    onClick={addConfirmed}
-                  >
-                    {t(lang, "add_item")}
-                  </button>
-                </div>
-
-                <div className="mt-2 text-xs text-slate-500">
-                  {t(lang, "dedupe_hint")}
-                </div>
-              </div>
+                </>
+              )}
 
 
 
@@ -1337,3 +1388,103 @@ setItemsLang(lang);
   );
 }
 {/* Eksempel: <OffersPanel queries={ingredients.map(x=>x.name).slice(0,4)} /> */}
+
+/**
+ * Tilbud - listevisning (thumbnail + fuldt varenavn + fuldt butiksnavn)
+ * Bruges som erstatning for grid-kort, så lange navne kan wrappe.
+ */
+function OfferListRow({ offer }: { offer: any }) {
+  const title =
+    offer?.title ??
+    offer?.productName ??
+    offer?.name ??
+    offer?.itemName ??
+    "Ukendt vare";
+
+  const store =
+    offer?.storeName ??
+    offer?.retailer ??
+    offer?.shop ??
+    offer?.chain ??
+    offer?.brand ??
+    "Ukendt butik";
+
+  const price =
+    offer?.price ??
+    offer?.currentPrice ??
+    offer?.offerPrice ??
+    offer?.salePrice ??
+    "";
+
+  const comparePrice =
+    offer?.comparePrice ??
+    offer?.originalPrice ??
+    offer?.beforePrice ??
+    offer?.normalPrice ??
+    "";
+
+  const img =
+    offer?.image ??
+    offer?.imageUrl ??
+    offer?.thumbnail ??
+    offer?.thumb ??
+    "";
+
+  const href =
+    offer?.url ??
+    offer?.offerUrl ??
+    offer?.link ??
+    offer?.href ??
+    "";
+
+  const content = (
+    <div className="flex gap-3 p-3 rounded-xl border bg-white">
+      <div className="w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0 bg-gray-50">
+        {img ? (
+          <img
+            src={img}
+            alt={title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : null}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold leading-snug break-words">
+              {title}
+            </div>
+            <div className="text-xs text-gray-600 break-words mt-0.5">
+              {store}
+            </div>
+          </div>
+
+          <div className="text-right flex-shrink-0">
+            {price ? <div className="text-sm font-semibold">{price}</div> : null}
+            {comparePrice ? (
+              <div className="text-xs text-gray-500 line-through">{comparePrice}</div>
+            ) : null}
+          </div>
+        </div>
+
+        {(offer?.validFrom || offer?.validTo) ? (
+          <div className="text-xs text-gray-500 mt-1">
+            {offer?.validFrom ? `Fra ${offer.validFrom}` : ""}
+            {offer?.validFrom && offer?.validTo ? " - " : ""}
+            {offer?.validTo ? `Til ${offer.validTo}` : ""}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  return href ? (
+    <a href={href} target="_blank" rel="noreferrer" className="block">
+      {content}
+    </a>
+  ) : (
+    content
+  );
+}
