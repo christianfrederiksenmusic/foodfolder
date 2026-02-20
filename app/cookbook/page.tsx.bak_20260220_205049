@@ -1,0 +1,217 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import type { CookbookRecipeSnapshot } from "@/app/types/cookbook";
+import SaveTestRecipeButton from "@/app/cookbook/save-test-recipe-button";
+
+type DbCookbookRow = {
+  id: string;
+  user_id: string;
+  recipe: CookbookRecipeSnapshot;
+  image_url: string | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function firstText(...xs: Array<string | undefined>) {
+  for (const x of xs) {
+    const t = (x ?? "").trim();
+    if (t) return t;
+  }
+  return "";
+}
+
+function formatMinutes(n?: number) {
+  if (!n || !Number.isFinite(n)) return "";
+  const m = Math.max(0, Math.round(n));
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${h} t ${r} min` : `${h} t`;
+}
+
+export default async function CookbookPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect("/login");
+  }
+
+  const { data, error } = await supabase
+    .from("cookbook_entries")
+    .select("id,user_id,recipe,image_url,is_archived,created_at,updated_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return (
+      <main style={{ maxWidth: 1050, margin: "40px auto", padding: 16 }}>
+        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Min kogebog</h1>
+        <p style={{ color: "crimson" }}>
+          Kunne ikke hente opskrifter: {error.message}
+        </p>
+      </main>
+    );
+  }
+
+  const entries = (data ?? []) as DbCookbookRow[];
+
+  return (
+    <main style={{ maxWidth: 1050, margin: "40px auto", padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ fontSize: 28, margin: "0 0 6px 0" }}>Min kogebog</h1>
+          <p style={{ margin: 0, color: "#444" }}>
+            Logget ind som: <strong>{user.email}</strong>
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <SaveTestRecipeButton />
+        </div>
+      </div>
+
+      <div style={{ height: 16 }} />
+
+      {entries.length === 0 ? (
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 14,
+            padding: 16,
+            background: "#fafafa",
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            Ingen gemte opskrifter endnu. Tryk på test-knappen for at gemme en demo-opskrift.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 14 }}>
+          {entries.map((entry) => {
+            const r = entry.recipe;
+
+            const summary = firstText(r.summary, r.description);
+            const time =
+              r.timeMinutes ??
+              r.totalTimeMinutes ??
+              r.cookTimeMinutes ??
+              undefined;
+
+            const tags = Array.isArray(r.tags) ? r.tags.filter(Boolean) : [];
+            const missing = Array.isArray(r.missing_items) ? r.missing_items.filter(Boolean) : [];
+
+            return (
+              <article
+                key={entry.id}
+                style={{
+                  border: "1px solid #e3e3e3",
+                  borderRadius: 16,
+                  padding: 18,
+                  background: "#fff",
+                  boxShadow: "0 1px 0 rgba(0,0,0,0.03)",
+                }}
+              >
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.2 }}>
+                      {r.title}
+                    </h2>
+
+                    {summary ? (
+                      <p style={{ margin: "6px 0 0 0", color: "#333" }}>
+                        {summary}
+                      </p>
+                    ) : null}
+
+                    <div style={{ marginTop: 10, display: "flex", gap: 12, flexWrap: "wrap", color: "#555", fontSize: 14 }}>
+                      <span>
+                        Gemt: {new Date(entry.created_at).toLocaleString("da-DK")}
+                      </span>
+                      {typeof r.servings === "number" ? (
+                        <span>Portioner: {r.servings}</span>
+                      ) : null}
+                      {time ? <span>Tid: {formatMinutes(time)}</span> : null}
+                    </div>
+
+                    {tags.length ? (
+                      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {tags.slice(0, 10).map((t, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 12,
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              border: "1px solid #ddd",
+                              background: "#fafafa",
+                              color: "#333",
+                            }}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+                    <section style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 700 }}>Ingredienser</p>
+                      <ul style={{ margin: "8px 0 0 0", paddingLeft: 18 }}>
+                        {r.ingredients.map((ing, idx) => (
+                          <li key={idx} style={{ marginBottom: 4 }}>
+                            <span style={{ fontWeight: 600 }}>{ing.item}</span>
+                            {ing.amount ? <span style={{ color: "#444" }}> - {ing.amount}</span> : null}
+                          </li>
+                        ))}
+                      </ul>
+
+                      {missing.length ? (
+                        <div style={{ marginTop: 12 }}>
+                          <p style={{ margin: 0, fontWeight: 700 }}>Mangler</p>
+                          <ul style={{ margin: "8px 0 0 0", paddingLeft: 18 }}>
+                            {missing.map((m, idx) => (
+                              <li key={idx}>{m}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </section>
+
+                    <section style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 700 }}>Fremgangsmåde</p>
+                      <ol style={{ margin: "8px 0 0 0", paddingLeft: 18 }}>
+                        {r.steps.map((s, idx) => (
+                          <li key={idx} style={{ marginBottom: 8 }}>
+                            {s}
+                          </li>
+                        ))}
+                      </ol>
+
+                      {Array.isArray(r.tips) && r.tips.length ? (
+                        <div style={{ marginTop: 12 }}>
+                          <p style={{ margin: 0, fontWeight: 700 }}>Tips</p>
+                          <ul style={{ margin: "8px 0 0 0", paddingLeft: 18 }}>
+                            {r.tips.map((t, idx) => (
+                              <li key={idx}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </section>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </main>
+  );
+}

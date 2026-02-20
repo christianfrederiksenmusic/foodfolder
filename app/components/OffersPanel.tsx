@@ -289,8 +289,8 @@ export default function OffersPanel(props: { queries: string[];
         <div className="mt-4">
           <h3 className="text-sm font-semibold opacity-80">Kampagner uden fast pris</h3>
           <ul className="mt-2 space-y-2">
-            {promotions.slice(0, 10).map((p) => (
-              <li key={((p as any).sourceUrl || (p as any).url || (p as any).publicId || (p as any).offerId || (p as any).name || Math.random().toString(36))} className="rounded-xl border border-black/10 bg-white p-3 text-sm">
+            {promotions.slice(0, 10).map((p, i) => (
+              <li key={String((p as any).sourceUrl || (p as any).url || (p as any).publicId || (p as any).offerId || ((p as any).name ? `promo|${(p as any).name}` : `promo|${i}`))} className="rounded-xl border border-black/10 bg-white p-3 text-sm">
                 <a href={((p as any).sourceUrl || (p as any).url || "")} target="_blank" rel="noreferrer" className="underline">
                   {(p as any).name}
                 </a>
