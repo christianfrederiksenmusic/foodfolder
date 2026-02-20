@@ -8,6 +8,7 @@ import PantryModal from "./components/PantryModal";
 
 import OffersPanel from "@/app/components/OffersPanel";
 import StoreGuidePanel from "@/app/components/StoreGuidePanel";
+import SaveRecipeButton from "@/app/components/SaveRecipeButton";
 
 
 function deriveOfferQueries(input: any): string[] {
@@ -458,6 +459,7 @@ const [error, setError] = useState("");
 const [constraints, setConstraints] = useState<string>(
     t("da", "constraints_placeholder"),
   );
+  const [recipeMode, setRecipeMode] = useState<"use-what-i-have" | "inspire-offers">("use-what-i-have");
 
   const [sha, setSha] = useState<string>("");
 
@@ -679,6 +681,19 @@ const originalBytes = useMemo(
       : t(lang, "status_ready");
   const versionShort = sha && sha !== "unknown" ? sha.slice(0, 7) : "";
   const dir = langDir(lang);
+  const recipeModeUi = {
+    label: lang === "da" ? "Opskriftstil" : "Recipe style",
+    useWhatIHave: lang === "da" ? "Brug det jeg har i forvejen" : "Use what I already have",
+    inspireOffers: lang === "da" ? "Inspirér mig til gode tilbud" : "Inspire me with good offers",
+    help:
+      recipeMode === "use-what-i-have"
+        ? (lang === "da"
+            ? "Vi prioriterer opskrifter med færrest mulige ekstra varer."
+            : "We prioritize recipes with as few extra items as possible.")
+        : (lang === "da"
+            ? "Vi bygger videre på dine ingredienser og foreslår ekstra varer, der passer til tilbud."
+            : "We build on your ingredients and suggest extra items that fit current offers."),
+  };
 
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     setError("");
@@ -810,15 +825,27 @@ const originalBytes = useMemo(
       })();
 
 
+      const modeInstruction =
+        recipeMode === "use-what-i-have"
+          ? (lang === "da"
+              ? "PRIORITET: Brug primært de bekræftede ingredienser og pantry-items. Hold missing_items så korte som muligt (helst 0-2 varer), og foreslå simple substitutioner hvis det giver mening."
+              : "PRIORITY: Primarily use the confirmed fridge ingredients and pantry items. Keep missing_items as short as possible (ideally 0-2 items), and suggest simple substitutions when helpful.")
+          : (lang === "da"
+              ? "PRIORITET: Brug de bekræftede ingredienser som base, men vær kreativ og løft retten med relevante ekstra varer. missing_items må gerne være 2-5 varer, især ting der typisk findes på tilbud. Hold opskriften realistisk og hverdagsvenlig."
+              : "PRIORITY: Use the confirmed ingredients as a base, but be creative and elevate the dish with relevant extra items. missing_items can be 2-5 items, especially things commonly found on offer. Keep the recipe realistic and weeknight-friendly.");
+
+      const composedConstraints = [modeInstruction, constraints].filter(Boolean).join("\n\n");
+
       const res = await fetch("/api/recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fridge_items: confirmed,
           pantry_items: pantry,
-          constraints,
+          constraints: composedConstraints,
           count: 4,
           language: lang,
+          recipe_mode: recipeMode,
         }),
       });
 
@@ -1009,6 +1036,39 @@ async function addShopping() {
           </div>
 
           <div className="flex items-center gap-3">
+            <a
+              href="/cookbook"
+              className="group relative overflow-hidden rounded-2xl border border-emerald-200 bg-white/90 shadow-md backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg"
+              aria-label={lang === "da" ? "Åbn min kogebog" : "Open my cookbook"}
+              title={lang === "da" ? "Min kogebog" : "My cookbook"}
+            >
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="relative h-14 w-14 shrink-0 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-100 p-2 shadow-sm">
+                  <svg viewBox="0 0 64 64" className="h-full w-full" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M10 16C10 12.6863 12.6863 10 16 10H30C34.4183 10 38 13.5817 38 18V54H18C13.5817 54 10 50.4183 10 46V16Z" fill="#ffffff" stroke="#0f766e" strokeWidth="2.5"/>
+                    <path d="M54 16C54 12.6863 51.3137 10 48 10H34C29.5817 10 26 13.5817 26 18V54H46C50.4183 54 54 50.4183 54 46V16Z" fill="#f0fdfa" stroke="#0f766e" strokeWidth="2.5"/>
+                    <path d="M26 18C26 13.5817 29.5817 10 34 10" stroke="#134e4a" strokeWidth="2.5"/>
+                    <path d="M18 22H30" stroke="#99f6e4" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M18 28H30" stroke="#99f6e4" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M34 22H46" stroke="#5eead4" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M34 28H46" stroke="#5eead4" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M32 12V54" stroke="#0f766e" strokeWidth="2.5"/>
+                  </svg>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold leading-tight text-slate-900">
+                    {lang === "da" ? "Min kogebog" : "My cookbook"}
+                  </div>
+                  <div className="text-xs leading-tight text-slate-600">
+                    {lang === "da" ? "Gemte opskrifter" : "Saved recipes"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 opacity-80 transition group-hover:opacity-100" />
+            </a>
+
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.18)]" />
               <span className="text-sm font-medium text-slate-700">
@@ -1115,7 +1175,11 @@ async function addShopping() {
 
 
 
-              <StoreGuidePanel lang={lang} queries={missingTodayDa} displayQueries={missingTodayDisplay} />
+              <StoreGuidePanel
+                lang={lang}
+                queries={confirmedItems}
+                displayQueries={confirmedItems.map((x) => displayNameFor(x)).filter(Boolean)}
+              />
 
               <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} />
 
@@ -1142,21 +1206,14 @@ async function addShopping() {
                 {t(lang, "ingredients_title")}
               </div>
               <div className="mt-1 text-sm text-slate-600">
-                {t(lang, "ingredients_subtitle")}
+                {lang === "da"
+                  ? "Hold din beholdning opdateret her. Brug den til at generere opskrifter, tilføj manglende varer til indkøbslisten, og find derefter tilbud og butikker på det, du mangler."
+                  : "Keep your pantry updated here. Use it to generate recipes, add missing items to your shopping list, and then find offers and stores for what you need."}
               </div>
             </div>
 
             <div className="px-6 py-6">
-              {!apiResult ? (
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center">
-                  <div className="text-sm font-semibold text-slate-900">
-                    {t(lang, "no_analysis_title")}
-                  </div>
-                  <div className="mt-2 text-sm text-slate-600">
-                    {t(lang, "no_analysis_subtitle")}
-                  </div>
-                </div>
-              ) : apiResult.ok === false ? (
+              {apiResult && apiResult.ok === false ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4">
                   <div className="text-sm font-semibold text-rose-900">
                     {apiResult.error}
@@ -1336,6 +1393,38 @@ async function addShopping() {
                   {t(lang, "recipes_subtitle")}
                 </div>
 
+                <div className="mt-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    {recipeModeUi.label}
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setRecipeMode("use-what-i-have")}
+                      className={`rounded-2xl border px-3 py-2 text-left text-sm transition ${
+                        recipeMode === "use-what-i-have"
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="font-semibold">{recipeModeUi.useWhatIHave}</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecipeMode("inspire-offers")}
+                      className={`rounded-2xl border px-3 py-2 text-left text-sm transition ${
+                        recipeMode === "inspire-offers"
+                          ? "border-blue-300 bg-blue-50 text-blue-900 shadow-sm"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="font-semibold">{recipeModeUi.inspireOffers}</div>
+                    </button>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-600">{recipeModeUi.help}</div>
+                </div>
+
                 <textarea
                   value={constraints}
                   onChange={(e) => setConstraints(e.target.value)}
@@ -1377,6 +1466,33 @@ async function addShopping() {
                               {r.summary}
                             </div>
                           ) : null}
+
+                          <div className="mt-3">
+                            <SaveRecipeButton
+                              recipe={{
+                                title: r.title,
+                                description: r.summary,
+                                servings: r.servings,
+                                cookTimeMinutes: r.time_minutes,
+                                totalTimeMinutes: r.time_minutes,
+                                ingredients: Array.isArray(r.ingredients)
+                                  ? r.ingredients
+                                      .map((ing) => ({
+                                        item: String(ing?.item ?? "").trim(),
+                                        amount:
+                                          typeof ing?.amount === "string"
+                                            ? ing.amount
+                                            : undefined,
+                                      }))
+                                      .filter((ing) => ing.item.length > 0)
+                                  : [],
+                                steps: Array.isArray(r.steps)
+                                  ? r.steps.map((s) => String(s ?? "").trim()).filter(Boolean)
+                                  : [],
+                                sourceType: "ai",
+                              }}
+                            />
+                          </div>
 
                           {Array.isArray(r.missing_items) && r.missing_items.length ? (
                             <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3">

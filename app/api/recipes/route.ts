@@ -410,8 +410,27 @@ export async function POST(req: Request) {
   const languageCode = pickLangFromBody(body);
   const languageName = langName(languageCode);
   const count = pickCount(body.count);
-  const constraints = clampText(body.constraints ?? "", 600);
+  let constraints = clampText(body.constraints ?? "", 600);
 
+  const rawRecipeMode = String((body as any).recipe_mode ?? (body as any).recipeMode ?? "").toLowerCase();
+  const pantryOnlyMode =
+    rawRecipeMode === "pantry" ||
+    rawRecipeMode === "use-what-i-have" ||
+    rawRecipeMode === "use_what_i_have" ||
+    rawRecipeMode === "brug-det-jeg-har" ||
+    rawRecipeMode === "brug_det_jeg_har" ||
+    rawRecipeMode === "brug" ||
+    rawRecipeMode === "use";
+
+  if (pantryOnlyMode) {
+    const pantryHardRule =
+      "PANTRY MODE (HARD RULE): Use ONLY ingredients from Fridge ingredients + Pantry items. " +
+      "Do NOT invent extra ingredients. missing_items MUST be an empty array []. " +
+      "If choices are limited, make simple recipes instead of adding ingredients.";
+    constraints = constraints ? `${constraints}
+
+${pantryHardRule}` : pantryHardRule;
+  }
   const fridge = normalizeFridgeItems(body);
   if (fridge.length === 0) return jsonNoStore({ ok: false, error: "No fridge_items provided" }, { status: 400 });
 
@@ -419,6 +438,24 @@ export async function POST(req: Request) {
 
   const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 
+  const pantryAllowedItems = new Set<string>(
+    [...fridge, ...pantry].map((x) => normalizeItem(x)).filter((x) => x.length > 0),
+  );
+
+  const filterPantryOnlyRecipes = (arr: Recipe[]): Recipe[] => {
+    if (!pantryOnlyMode) return arr;
+
+    return arr.filter((r: Recipe) => {
+      const missing = Array.isArray(r.missing_items)
+        ? r.missing_items.filter((m) => typeof m === "string" && m.trim())
+        : [];
+
+      // Pantry-mode V1 (robust): only enforce NO missing items.
+      // We intentionally do NOT exact-match every ingredient against fridge/pantry names here,
+      // because naming variants (e.g. "tomat" vs "dåsetomat") were filtering out valid recipes.
+      return missing.length === 0;
+    });
+  };
   const prompt1 = buildPrompt({ languageCode, languageName, fridge, pantry, constraints, count });
   const a1 = await callAnthropic(apiKey, model, prompt1, 0.0);
 
@@ -432,7 +469,7 @@ export async function POST(req: Request) {
   const parsed1 = safeJsonParse(json1);
   const recipes1 = Array.isArray(parsed1?.recipes) ? parsed1.recipes : [];
 
-  let valid: Recipe[] = recipes1.filter(isValidRecipe);
+  let valid: Recipe[] = filterPantryOnlyRecipes(recipes1.filter(isValidRecipe));
 
   // If target is NOT English and output looks English, force translate pass.
   if (languageCode !== "en" && looksEnglish(t1)) {
@@ -444,7 +481,7 @@ export async function POST(req: Request) {
       const jsonT = extractJsonObject(tT);
       const parsedT = safeJsonParse(jsonT);
       const recipesT = Array.isArray(parsedT?.recipes) ? parsedT.recipes : [];
-      const validT: Recipe[] = recipesT.filter(isValidRecipe);
+      const validT: Recipe[] = filterPantryOnlyRecipes(recipesT.filter(isValidRecipe));
       if (validT.length > 0) valid = validT;
     }
   }
@@ -491,7 +528,7 @@ ${t1 || "(empty)"}
   const t2 = a2.top ? extractAssistantText(a2.top) : a2.rawText;
   const parsed2 = safeJsonParse(extractJsonObject(t2));
   const recipes2 = Array.isArray(parsed2?.recipes) ? parsed2.recipes : [];
-  const valid2: Recipe[] = recipes2.filter(isValidRecipe);
+  const valid2: Recipe[] = filterPantryOnlyRecipes(recipes2.filter(isValidRecipe));
 
   if (valid2.length === 0) {
     return jsonNoStore({ ok: false, error: "Invalid recipes format after repair", raw: { t1, t2 } }, { status: 502 });
