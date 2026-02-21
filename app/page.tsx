@@ -505,12 +505,12 @@ useEffect(() => {
         const missDa = await ensureDaCanonicalListRef.current(missingToday);
         if (cancelled) return;
         setMissingTodayDa(missDa);
-        setOfferQueriesDa(deriveOfferQueries({ missing: missDa, recipesResult }));
+        setOfferQueriesDa((missDa || []).slice(0, 6));
       } catch {
         if (cancelled) return;
         // Fail-safe: fall back to raw list so UI keeps working.
         setMissingTodayDa(missingToday);
-        setOfferQueriesDa(deriveOfferQueries({ missing: missingToday, recipesResult }));
+        setOfferQueriesDa((missingToday || []).slice(0, 6));
       }
     }
 
@@ -866,9 +866,31 @@ const originalBytes = useMemo(
       const recipes: Recipe[] = Array.isArray(json?.recipes)
         ? json.recipes
         : [];
+
+      const haveSet = new Set(
+        dedupeCaseInsensitive([...(confirmed || []), ...(pantry || [])])
+          .map((x) => normalizeItem(x))
+          .filter(Boolean)
+      );
+
+      const recipesFiltered = (recipes as any[]).map((r) => {
+        const miss = Array.isArray((r as any)?.missing_items) ? (r as any).missing_items : [];
+        const filteredMissing = miss.filter((m: any) => {
+          const raw =
+            typeof m === "string"
+              ? m
+              : m && typeof m === "object"
+                ? (typeof m.item === "string" ? m.item : (typeof m.name === "string" ? m.name : ""))
+                : "";
+          const n = normalizeItem(raw);
+          return n && !haveSet.has(n);
+        });
+        return { ...r, missing_items: filteredMissing };
+      });
+
       setRecipesResult({
         ok: true,
-        recipes,
+        recipes: recipesFiltered as Recipe[],
         requestId: json?.requestId,
         sha: json?.sha,
       });
@@ -1177,8 +1199,8 @@ async function addShopping() {
 
               <StoreGuidePanel
                 lang={lang}
-                queries={confirmedItems}
-                displayQueries={confirmedItems.map((x) => displayNameFor(x)).filter(Boolean)}
+                queries={missingTodayDa}
+                displayQueries={missingTodayDisplay}
               />
 
               <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} />
