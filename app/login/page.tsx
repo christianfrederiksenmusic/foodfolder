@@ -43,7 +43,9 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        window.location.href = "/cookbook";
+        const params = new URLSearchParams(window.location.search);
+        const nextPath = params.get("next") || "/cookbook";
+        window.location.href = nextPath;
         return;
       }
     }

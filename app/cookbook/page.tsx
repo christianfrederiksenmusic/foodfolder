@@ -40,11 +40,12 @@ export default async function CookbookPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/");
+  if (!user) redirect("/login?next=/cookbook");
 
   const { data, error } = await supabase
     .from("cookbook_entries")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
