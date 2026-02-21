@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 type Body = {
   image?: string;
   imageBase64?: string;
@@ -269,7 +272,19 @@ export async function POST(req: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
-      return jsonNoStore({ ok: false, error: "Missing ANTHROPIC_API_KEY", requestId, version: getVersion() }, { status: 500 });
+      return jsonNoStore({
+        ok: false,
+        error: "Missing ANTHROPIC_API_KEY",
+        requestId,
+        version: getVersion(),
+        debug: {
+          vercel: !!process.env.VERCEL,
+          vercelEnv: process.env.VERCEL_ENV || null,
+          vercelUrl: process.env.VERCEL_URL || null,
+          nodeEnv: process.env.NODE_ENV || null,
+          hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY
+        }
+      }, { status: 500 });
     }
 
     const bodyText = await req.text();
