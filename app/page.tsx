@@ -461,6 +461,7 @@ const [constraints, setConstraints] = useState<string>(
   );
   const [recipeMode, setRecipeMode] = useState<"use-what-i-have" | "inspire-offers">("use-what-i-have");
 
+
   const [sha, setSha] = useState<string>("");
 
   const lastConfirmedKeyRef = useRef<string>("");
@@ -632,6 +633,7 @@ useEffect(() => {
       setConstraints("");
     }
   }, [constraints]);
+
 
   useEffect(() => {
     let dead = false;
@@ -1522,14 +1524,147 @@ async function addShopping() {
 
               <div className="space-y-4 lg:col-span-7">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {lang === "da" ? "Tilbud" : "Offers"}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600">
+                        {lang === "da"
+                          ? "Relevante tilbud baseret på det, du mangler."
+                          : "Relevant offers based on what you need."}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} />
+                  </div>
                 </div>
+
+
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-center py-1" aria-hidden="true">
+            <div className="flex flex-col items-center">
+              <div className="h-4 w-px bg-yellow-300/90" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-yellow-200 bg-white shadow-sm">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 text-emerald-700"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M6 13L12 19L18 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div className="h-4 w-px bg-yellow-300/90" />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
+              <div className="text-center">
+                <div className="flex justify-center">
+                  <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
+                    {lang === "da" ? "Trin 4" : "Step 4"}
+                  </span>
+                </div>
+
+                <div className="mt-2 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+                  {lang === "da" ? "Butiksplan" : "Store plan"}
+                </div>
+
+                <div className="mx-auto mt-1 max-w-3xl text-sm text-slate-600">
+                  {lang === "da"
+                    ? "Sidste trin: se din valgte opskrift, hvad du mangler, og hvor du bedst handler."
+                    : "Final step: see your selected recipe, what you need, and where to shop."}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 p-4 lg:grid-cols-12">
+              <div className="space-y-4 lg:col-span-5">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <StoreGuidePanel lang={lang} queries={missingTodayDa} displayQueries={missingTodayDisplay} />
+                  <div className="text-sm font-semibold text-slate-900">
+                    {lang === "da" ? "Valgt opskrift" : "Selected recipe"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {lang === "da"
+                      ? "Den opskrift du handler ind til nu."
+                      : "The recipe you're shopping for now."}
+                  </div>
+
+                  {recipesResult && (recipesResult as any).ok === true && Array.isArray((recipesResult as any).recipes) && (recipesResult as any).recipes.length ? (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {String(((recipesResult as any).recipes[Math.max(0, Math.min(selectedRecipeIdx, (recipesResult as any).recipes.length - 1))] as any)?.title || "")}
+                      </div>
+                      {!!((recipesResult as any).recipes[Math.max(0, Math.min(selectedRecipeIdx, (recipesResult as any).recipes.length - 1))] as any)?.summary && (
+                        <div className="mt-1 text-xs text-slate-600">
+                          {String(((recipesResult as any).recipes[Math.max(0, Math.min(selectedRecipeIdx, (recipesResult as any).recipes.length - 1))] as any)?.summary || "")}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">
+                      {lang === "da" ? "Ingen opskrift valgt endnu." : "No recipe selected yet."}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {lang === "da" ? "Mangler til indkøb" : "Items to buy"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    {lang === "da"
+                      ? "Din samlede indkøbsliste til den valgte ret."
+                      : "Your combined shopping list for the selected dish."}
+                  </div>
+
+                  {missingTodayDisplay.length ? (
+                    <ul className="mt-3 space-y-2">
+                      {missingTodayDisplay.map((item, idx) => (
+                        <li key={`${item}-${idx}`} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                          <span className="mt-0.5 text-slate-400">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">
+                      {lang === "da" ? "Ingen varer på indkøbslisten endnu." : "No shopping items yet."}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4 lg:col-span-7">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {lang === "da" ? "Butiksguidning" : "Store guide"}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600">
+                        {lang === "da"
+                          ? "Find de bedste butikker til din aktuelle indkøbsliste."
+                          : "Find the best stores for your current shopping list."}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <StoreGuidePanel lang={lang} queries={missingTodayDa} displayQueries={missingTodayDisplay} />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
         </section>
 
       </div>
