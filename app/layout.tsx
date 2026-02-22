@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="da">
       <body
         className={`${dmSans.variable} ${comfortaa.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ fontFamily: "var(--font-body)" }}
+        style={{ fontFamily: "var(--font-heading)" }}
       >
         {children}
       </body>
