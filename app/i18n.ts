@@ -132,7 +132,7 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     no_items_title: "Ingen items",
     no_items_subtitle: "Prøv et skarpere/beskåret billede.",
     recipes_title: "Lav opskrifter",
-    recipes_subtitle: "Skriv constraints og generér forslag.",
+    recipes_subtitle: "Her får du forslag til lækre retter - både ud fra det, du allerede har, og med inspiration fra gode tilbud.",
     constraints_placeholder:
       "fx: hurtigt, simpelt, få ingredienser, ingen fancy udstyr",
     make_recipes: "Lav opskrifter",
@@ -488,7 +488,7 @@ export const I18N: Record<Lang, Record<TKey, string>> = {
     no_items_title: "No items",
     no_items_subtitle: "Try a sharper/cropped image.",
     recipes_title: "Generate recipes",
-    recipes_subtitle: "Add constraints and generate suggestions.",
+    recipes_subtitle: "Get suggestions for tasty meals - based on what you already have and inspired by great deals.",
     constraints_placeholder:
       "e.g. quick, simple, few ingredients, no fancy equipment",
     make_recipes: "Generate recipes",

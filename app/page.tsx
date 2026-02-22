@@ -1033,22 +1033,22 @@ async function addShopping() {
         </header>
 
         <section className="space-y-6">
-          <div className="rounded-3xl border border-amber-300/70 bg-amber-100/70 shadow-sm backdrop-blur">
-            <div className="border-b border-amber-300/80 bg-amber-200/70 px-6 py-5">
+          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
-                  <span className="rounded-full border border-amber-400 bg-amber-300/80 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                  <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
                     {lang === "da" ? "Trin 1" : "Step 1"}
                   </span>
                 </div>
 
                 <div className="mt-2 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
-                  {lang === "da" ? "Lager" : "Inventory"}
+                  {lang === "da" ? "Dine råvare" : "Inventory"}
                 </div>
 
                 <div className="mx-auto mt-1 max-w-3xl text-sm text-slate-600">
                   {lang === "da"
-                    ? "Ét samlet flow: Spisekammer, scan og bekræftede ingredienser. Her styrer du, hvad du har hjemme."
+                    ? "Skab et overblik over, hvad du har hjemme - i køleskab, fryser og skabe."
                     : "One combined flow: Pantry, scan, and confirmed ingredients. This is where you manage what you have at home."}
                 </div>
               </div>
@@ -1088,7 +1088,7 @@ async function addShopping() {
                           : "Upload a photo and scan ingredients directly into the inventory flow."}
                       </div>
                     </div>
-                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                       {lang === "da" ? "Scan" : "Scan"}
                     </span>
                   </div>
@@ -1105,7 +1105,7 @@ async function addShopping() {
                       type="button"
                       onClick={() => fileRef.current?.click()}
                       disabled={busy || apiBusy || recipesBusy}
-                      className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-10 flex-1 rounded-xl border border-[#F1C77A] bg-[#FBE3B7] px-3 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-[#F7D08A] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {lang === "da" ? "Vælg foto" : "Choose photo"}
                     </button>
@@ -1113,7 +1113,7 @@ async function addShopping() {
                       type="button"
                       onClick={callFridge}
                       disabled={apiBusy || busy || recipesBusy || !chosen.dataUrl}
-                      className="h-10 rounded-xl bg-blue-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-10 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {apiBusy ? (lang === "da" ? "Scanner..." : "Scanning...") : (lang === "da" ? "Scan" : "Scan")}
                     </button>
@@ -1171,7 +1171,7 @@ async function addShopping() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-3 rounded-2xl border border-amber-200/70 bg-amber-50/60 px-3 py-3">
+                  <div className="mt-3">
                     {renderFridgeEditor()}
                   </div>
                   {false && (
@@ -1208,11 +1208,29 @@ async function addShopping() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-amber-200/80 bg-amber-50/80 shadow-sm backdrop-blur">
-            <div className="border-b border-amber-200/80 bg-amber-100/80 px-6 py-5">
+          <div className="flex justify-center py-1" aria-hidden="true">
+            <div className="flex flex-col items-center">
+              <div className="h-4 w-px bg-yellow-300/90" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-yellow-200 bg-white shadow-sm">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 text-emerald-700"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M6 13L12 19L18 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div className="h-4 w-px bg-yellow-300/90" />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
-                  <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                  <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
                     {lang === "da" ? "Trin 2" : "Step 2"}
                   </span>
                 </div>
@@ -1294,7 +1312,7 @@ async function addShopping() {
                 value={constraints}
                 onChange={(e) => setConstraints(e.target.value)}
                 placeholder={t(lang, "constraints_placeholder")}
-                className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
+                className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-200"
                 rows={3}
               />
 
@@ -1367,11 +1385,29 @@ async function addShopping() {
             </div>
           </div>
 
+          <div className="flex justify-center py-1" aria-hidden="true">
+            <div className="flex flex-col items-center">
+              <div className="h-4 w-px bg-yellow-300/90" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-yellow-200 bg-white shadow-sm">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 text-emerald-700"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M6 13L12 19L18 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div className="h-4 w-px bg-yellow-300/90" />
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
-            <div className="border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
+            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
-                  <span className="rounded-full border border-yellow-300 bg-yellow-100 px-2 py-0.5 text-[11px] font-semibold text-yellow-800">
+                  <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
                     {lang === "da" ? "Trin 3" : "Step 3"}
                   </span>
                 </div>
@@ -1563,8 +1599,8 @@ function OfferListRow({ offer }: { offer: any }) {
     "";
 
   const content = (
-    <div className="flex gap-3 p-3 rounded-xl border bg-white">
-      <div className="w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0 bg-gray-50">
+    <div className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3">
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
         {img ? (
           <img
             src={img}
@@ -1581,7 +1617,7 @@ function OfferListRow({ offer }: { offer: any }) {
             <div className="text-sm font-semibold leading-snug break-words">
               {title}
             </div>
-            <div className="text-xs text-gray-600 break-words mt-0.5">
+            <div className="mt-0.5 break-words text-xs text-slate-600">
               {store}
             </div>
           </div>
@@ -1589,13 +1625,13 @@ function OfferListRow({ offer }: { offer: any }) {
           <div className="text-right flex-shrink-0">
             {price ? <div className="text-sm font-semibold">{price}</div> : null}
             {comparePrice ? (
-              <div className="text-xs text-gray-500 line-through">{comparePrice}</div>
+              <div className="text-xs text-slate-500 line-through">{comparePrice}</div>
             ) : null}
           </div>
         </div>
 
         {(offer?.validFrom || offer?.validTo) ? (
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="mt-1 text-xs text-slate-500">
             {offer?.validFrom ? `Fra ${offer.validFrom}` : ""}
             {offer?.validFrom && offer?.validTo ? " - " : ""}
             {offer?.validTo ? `Til ${offer.validTo}` : ""}
