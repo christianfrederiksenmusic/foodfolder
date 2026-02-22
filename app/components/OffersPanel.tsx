@@ -93,8 +93,66 @@ function matchesAnyQuery(offerName: string, queries: string[]): boolean {
   return false;
 }
 
+
+type OfferCategoryKey = "produce" | "dairy" | "meat_fish" | "pantry" | "other";
+
+function classifyOfferCategory(name: string | null | undefined): OfferCategoryKey {
+  const n = normalizeText(name || "");
+  if (!n) return "other";
+
+  const produceWords = [
+    "salat", "iceberg", "hjertesalat", "romaine", "tomat", "tomater", "agurk", "peberfrugt",
+    "champignon", "svamp", "løg", "loeg", "hvidløg", "hvidloeg", "porre", "gulerod", "gulerød",
+    "kartoffel", "kartofler", "broccoli", "blomkål", "blomkaal", "spinat", "grønkål", "groenkaal",
+    "avocado", "citron", "lime", "æble", "aeble", "banan", "pære", "paere", "appelsin", "frugt"
+  ];
+  if (produceWords.some((w) => n.includes(normalizeText(w)))) return "produce";
+
+  const dairyWords = [
+    "mælk", "maelk", "letmælk", "letmaelk", "sødmælk", "soedmaelk", "minimælk", "minimaelk",
+    "skummetmælk", "skummemælk", "kærnemælk", "kaernemaelk",
+    "yoghurt", "skyr", "ost", "smør", "smoer", "fløde", "floede", "creme fraiche"
+  ];
+  if (dairyWords.some((w) => n.includes(normalizeText(w)))) return "dairy";
+
+  const meatFishWords = [
+    "kylling", "hakket okse", "oksekød", "oksekoed", "svinekød", "svinekoed",
+    "bacon", "pølse", "poelse", "fisk", "laks", "torsk", "tun", "rejer", "kød", "koed"
+  ];
+  if (meatFishWords.some((w) => n.includes(normalizeText(w)))) return "meat_fish";
+
+  const pantryWords = [
+    "ris", "pasta", "spaghetti", "penne", "mel", "hvedemel", "gær", "gaer",
+    "olie", "olivenolie", "eddike", "tomatpur", "tomatpure", "hakkede tomater", "bønner", "boenner",
+    "linser", "kikærter", "kikaerter", "havregryn", "bulgur", "couscous"
+  ];
+  if (pantryWords.some((w) => n.includes(normalizeText(w)))) return "pantry";
+
+  return "other";
+}
+
+function categoryLabel(key: OfferCategoryKey, lang: any): string {
+  const da = {
+    produce: "Frugt og grønt",
+    dairy: "Mejeri",
+    meat_fish: "Kød og fisk",
+    pantry: "Basisvarer",
+    other: "Andet",
+  } as const;
+
+  const en = {
+    produce: "Produce",
+    dairy: "Dairy",
+    meat_fish: "Meat & fish",
+    pantry: "Pantry",
+    other: "Other",
+  } as const;
+
+  return (lang === "da" ? da : en)[key];
+}
+
 export default function OffersPanel(props: { queries: string[];
-  displayQueries?: string[]; limitPerQuery?: number; lang: Lang }) {
+  displayQueries?: string[]; limitPerQuery?: number; lang: Lang; onAddToShopping?: (offer: any) => void }) {
   const fmt = (s: string, vars: Record<string, string>) =>
     s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
 
@@ -200,8 +258,34 @@ export default function OffersPanel(props: { queries: string[];
     };
   }, [queries.join("|"), limitPerQuery]);
 
+  const groupedOffers = (() => {
+    const top = offers.slice(0, 30);
+    const buckets: Record<OfferCategoryKey, any[]> = {
+      produce: [],
+      dairy: [],
+      meat_fish: [],
+      pantry: [],
+      other: [],
+    };
+
+    for (const o of top) {
+      const k = classifyOfferCategory((o as any).name || "");
+      buckets[k].push(o);
+    }
+
+    const ordered = [
+      { key: "produce" as OfferCategoryKey, items: buckets.produce },
+      { key: "dairy" as OfferCategoryKey, items: buckets.dairy },
+      { key: "meat_fish" as OfferCategoryKey, items: buckets.meat_fish },
+      { key: "pantry" as OfferCategoryKey, items: buckets.pantry },
+      { key: "other" as OfferCategoryKey, items: buckets.other },
+    ];
+
+    return ordered.filter((g) => g.items.length > 0);
+  })();
+
   return (
-    <section className="mt-4 w-full rounded-2xl border border-black/10 bg-white/70 p-4">
+    <section className="w-full">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">{t(props.lang, "offers_title")}</h2>
@@ -223,65 +307,98 @@ export default function OffersPanel(props: { queries: string[];
       )}
 
       
-      <div className="mt-3 space-y-2">
-        {offers.slice(0, 30).map((o, idx) => {
-          const key =
-            String(
-              (o as any).sourceUrl ||
-                (o as any).source_url ||
-                (o as any).url ||
-                (o as any).offerUrl ||
-                (o as any).publicId ||
-                (o as any).offerId ||
-                // last resort: deterministic composite (no Math.random)
-                ((o as any).name ? `${(o as any).store || ""}|${(o as any).name}` : "")
-            ) || `fallback|${idx}`;
+      <div className="mt-3 space-y-4">
+        {groupedOffers.map((group) => (
+          <div key={group.key} className="space-y-2">
+            <div className="px-1">
+              <h3 className="text-sm font-semibold text-slate-700">
+                {categoryLabel(group.key, props.lang)}
+                <span className="ml-2 text-xs font-normal opacity-60">({group.items.length})</span>
+              </h3>
+            </div>
 
-          const href =
-            ((o as any).sourceUrl || (o as any).source_url || (o as any).url || (o as any).offerUrl || "");
+            <div className="space-y-2">
+              {group.items.map((o, idx) => {
+                const key =
+                  String(
+                    (o as any).sourceUrl ||
+                      (o as any).source_url ||
+                      (o as any).url ||
+                      (o as any).offerUrl ||
+                      (o as any).publicId ||
+                      (o as any).offerId ||
+                      ((o as any).name ? `${(o as any).store || ""}|${(o as any).name}` : "")
+                  ) || `fallback|${group.key}|${idx}`;
 
-          return (
-            <a
-              key={key}
-              href={href || undefined}
-              target="_blank"
-              rel="noreferrer"
-              className="block"
-            >
-              <div className="flex gap-3 p-3 rounded-xl border border-black/10 bg-white hover:bg-slate-50">
-                <div className="w-16 h-16 rounded-xl overflow-hidden border border-black/10 flex-shrink-0 bg-slate-50">
-                  {(o as any).image ? (
-                    <img
-                      src={(o as any).image}
-                      alt={(o as any).name || "Tilbud"}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : null}
-                </div>
+                const href =
+                  ((o as any).sourceUrl || (o as any).source_url || (o as any).url || (o as any).offerUrl || "");
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-900 leading-snug break-words">
-                        {(o as any).name || "Tilbud"}
+                return (
+                  <a
+                    key={key}
+                    href={href || undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="relative block"
+                  >
+                    {props.onAddToShopping ? (
+                      <button
+                        type="button"
+                        className="absolute right-3 bottom-3 z-10 h-8 rounded-xl bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm transition cursor-pointer hover:bg-slate-800 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60"
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          props.onAddToShopping?.(o as any);
+                        }}
+                      >
+                        {props.lang === "da" ? "Tilføj til kurv" : "Add to cart"}
+                      </button>
+                    ) : null}
+                    <div className="flex gap-3 p-3 pb-12 rounded-xl border border-black/10 bg-white hover:bg-slate-50">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden border border-black/10 flex-shrink-0 bg-slate-50">
+                        {(o as any).image ? (
+                          <img
+                            src={(o as any).image}
+                            alt={(o as any).name || "Tilbud"}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : null}
                       </div>
-                      <div className="mt-0.5 text-xs text-slate-600 break-words">
-                        {(o as any).store || "Ukendt butik"}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-900 leading-snug break-words">
+                              {(o as any).name || "Tilbud"}
+                            </div>
+                            <div className="mt-0.5 text-xs text-slate-600 break-words">
+                              {(o as any).store || "Ukendt butik"}
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-base font-semibold">
+                              {formatDkk((o as any).price)}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-base font-semibold">
-                        {formatDkk((o as any).price)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </a>
-          );
-        })}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
       
 

@@ -13,7 +13,7 @@ import SaveRecipeButton from "@/app/components/SaveRecipeButton";
 function deriveOfferQueries(input: any): string[] {
   // Input can be: { missing }, { recipes }, { fridge }, etc.
   // We try to extract "missing ingredients" first; fallback to recipe ingredients.
-  const maxQueries = 6;
+  const maxQueries = 8;
 
   const norm = (x: string) =>
     x
@@ -112,11 +112,58 @@ function deriveOfferQueries(input: any): string[] {
 
   const cleaned = base.map(norm).filter(Boolean);
 
+  // Add a small set of broader fallback queries so specific terms (e.g. "revet ost")
+  // can also surface broader offer results (e.g. "ost"), without exploding query count.
+  const broadenQuery = (q: string): string[] => {
+    const out: string[] = [];
+    const s = q.trim();
+    if (!s) return out;
+
+    const add = (x: string) => {
+      const t = (x || "").trim();
+      if (t && t !== s && !out.includes(t)) out.push(t);
+    };
+
+    // Strip common modifiers to get the core product
+    add(
+      s
+        .replace(/\b(revet|revete|skåret|skiver|i skiver|tern|ternet|hakket|frisk|frosne?|økologisk|light|let|mager|minimælk|søde?)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    );
+
+    // Food-specific broadening (controlled and small)
+    if (/\b(ost|mozzarella|cheddar|parmesan|feta)\b/.test(s)) add("ost");
+    if (/\b(sødmælk|letmælk|minimælk|mælk|kakaomælk)\b/.test(s)) add("mælk");
+    if (/\b(yoghurt|skyr)\b/.test(s)) add("yoghurt");
+    if (/\b(fløde|piskefløde|madlavningsfløde)\b/.test(s)) add("fløde");
+    if (/\b(tomat|tomater|cherrytomat|cherrytomater)\b/.test(s)) add("tomat");
+    if (/\b(løg|rødløg|forårsløg)\b/.test(s)) add("løg");
+    if (/\b(kylling|kyllingebryst|kyllingefilet)\b/.test(s)) add("kylling");
+    if (/\b(oksekød|hakket oksekød|okse)\b/.test(s)) add("oksekød");
+    if (/\b(svin|svinekød)\b/.test(s)) add("svinekød");
+    if (/\b(ris|basmati|jasminris)\b/.test(s)) add("ris");
+    if (/\b(pasta|spaghetti|penne|fusilli)\b/.test(s)) add("pasta");
+    if (/\b(brød|rugbrød|toastbrød)\b/.test(s)) add("brød");
+
+    // Generic fallback: last word often carries the product class ("revet ost" -> "ost")
+    const parts = s.split(" ").filter(Boolean);
+    if (parts.length >= 2) add(parts[parts.length - 1]);
+
+    return out.slice(0, 2); // keep it tight
+  };
+
+  const expanded: string[] = [];
+  for (const q of cleaned) {
+    expanded.push(q);
+    for (const b of broadenQuery(q)) expanded.push(b);
+  }
+
   // De-duplicate, drop trivial words
   const drop = new Set(["salt", "peber", "vand", "olie", "sukker", "mel", "smør"]);
   const uniq: string[] = [];
   const seen = new Set<string>();
-  for (const x of cleaned) {
+  for (const x of expanded) {
     if (drop.has(x)) continue;
     if (!seen.has(x)) {
       seen.add(x);
@@ -415,6 +462,7 @@ const fileRef = useRef<HTMLInputElement | null>(null);
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
   // Shopping list (things you plan to buy; NOT things you have)
   const [shoppingItems, setShoppingItems] = useState<string[]>([]);
+const [selectedOffers, setSelectedOffers] = useState<any[]>([]);
   const [selectedRecipeIdx, setSelectedRecipeIdx] = useState<number>(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [newConfirmedItem, setNewConfirmedItem] = useState<string>("");
@@ -936,6 +984,43 @@ async function addShopping() {
 
   setShoppingItems((prev) => dedupeCaseInsensitive([...(prev || []), ...itemsDa]));
   setNewShoppingItem("");
+}
+
+async function addOfferToShopping(offer: any) {
+  const name =
+    offer?.name ??
+    offer?.title ??
+    offer?.productName ??
+    offer?.itemName ??
+    "";
+
+  const href =
+    offer?.sourceUrl ??
+    offer?.url ??
+    offer?.href ??
+    "";
+
+  const key = `${href}__${name}`.trim();
+  if (!key) return;
+
+  setSelectedOffers((prev) => {
+    const exists = (prev || []).some((x: any) => {
+      const xName =
+        x?.name ??
+        x?.title ??
+        x?.productName ??
+        x?.itemName ??
+        "";
+      const xHref =
+        x?.sourceUrl ??
+        x?.url ??
+        x?.href ??
+        "";
+      return `${xHref}__${xName}`.trim() === key;
+    });
+    if (exists) return prev;
+    return [...(prev || []), offer];
+  });
 }
 
   function getRecipeMissingItems(r: any): string[] {
@@ -1545,7 +1630,7 @@ async function addShopping() {
                   </div>
 
                   <div className="mt-3">
-                    <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} />
+                    <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} onAddToShopping={addOfferToShopping} />
                   </div>
                 </div>
 
@@ -1663,8 +1748,143 @@ async function addShopping() {
                     </div>
                   </div>
 
+                  <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                    <div className="mb-2 text-sm font-semibold text-slate-900">
+                      {lang === "da" ? "Min kurv (valgte tilbud)" : "My cart (selected offers)"}
+                    </div>
+
+                    {selectedOffers.length === 0 ? (
+                      <div className="text-sm text-slate-600">
+                        {lang === "da"
+                          ? "Ingen valgte tilbud endnu. Tryk 'Tilføj til kurv' på et tilbud."
+                          : "No selected offers yet. Tap 'Add to cart' on an offer."}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedOffers.map((o, idx) => {
+                          const name =
+                            o?.name ??
+                            o?.title ??
+                            o?.productName ??
+                            o?.itemName ??
+                            "Ukendt vare";
+
+                          const storeName =
+                            o?.storeName ??
+                            o?.retailer ??
+                            o?.shop ??
+                            o?.chain ??
+                            o?.store ??
+                            o?.brand ??
+                            "";
+
+                          const rawPrice =
+                            o?.price ??
+                            o?.currentPrice ??
+                            o?.offerPrice ??
+                            o?.salePrice ??
+                            o?.priceText ??
+                            o?.priceLabel ??
+                            "";
+
+                          const href =
+                            o?.sourceUrl ??
+                            o?.url ??
+                            o?.href ??
+                            "";
+
+                          const image =
+                            o?.image ??
+                            o?.imageUrl ??
+                            o?.img ??
+                            o?.thumbnail ??
+                            "";
+
+                          const priceText = (() => {
+                            if (typeof rawPrice === "number" && Number.isFinite(rawPrice)) {
+                              return String(Math.round(rawPrice * 100) / 100).replace(".", ",");
+                            }
+                            const s = String(rawPrice ?? "").trim();
+                            if (!s) return "";
+                            const m = s.replace(/\s+/g, "").match(/(\d+[\.,]?\d{0,2})/);
+                            if (!m) return s;
+                            return m[1].replace(".", ",");
+                          })();
+
+                          return (
+                            <div
+                              key={`${href || name}-${idx}`}
+                              className="rounded-xl border border-black/10 bg-white p-2"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                  {image ? (
+                                    <img
+                                      src={image}
+                                      alt={name}
+                                      className="h-full w-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                                      {lang === "da" ? "Intet billede" : "No image"}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
+                                    {name}
+                                  </div>
+
+                                  <div className="mt-1 text-xs text-slate-500">
+                                    {storeName || (lang === "da" ? "Ukendt butik" : "Unknown store")}
+                                  </div>
+
+                                  {priceText ? (
+                                    <div className="mt-1 text-sm font-semibold text-slate-900">
+                                      {priceText}
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                  {href ? (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex h-8 items-center rounded-lg border border-black/10 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                                    >
+                                      {lang === "da" ? "Se" : "View"}
+                                    </a>
+                                  ) : null}
+
+                                  <button
+                                    type="button"
+                                    className="h-8 rounded-lg border border-black/10 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                                    onClick={() =>
+                                      setSelectedOffers((prev) => (prev || []).filter((_, i) => i !== idx))
+                                    }
+                                  >
+                                    {lang === "da" ? "Fjern" : "Remove"}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-3">
-                    <StoreGuidePanel lang={lang} queries={missingTodayDa} displayQueries={missingTodayDisplay} />
+                    <StoreGuidePanel
+                      lang={lang}
+                      queries={[]}
+                      displayQueries={[]}
+                      selectedOffers={selectedOffers}
+                    />
                   </div>
                 </div>
               </div>

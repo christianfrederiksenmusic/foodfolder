@@ -37,24 +37,207 @@ function isoToDaDate(iso: string | null) {
   return d.toLocaleDateString("da-DK");
 }
 
-export default function StoreGuidePanel(props: { queries: string[];
-  displayQueries?: string[]; lang: Lang }) {
+function parseOfferPrice(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const s = value.trim();
+  if (!s) return null;
+
+  // handle "12,95", "12.95", "kr 12,95", etc.
+  const m = s.replace(/\s+/g, "").match(/(\d+[\.,]?\d{0,2})/);
+  if (!m) return null;
+  const num = Number(m[1].replace(",", "."));
+  return Number.isFinite(num) ? num : null;
+}
+
+export default function StoreGuidePanel(props: {
+  queries: string[];
+  displayQueries?: string[];
+  lang: Lang;
+  selectedOffers?: any[];
+}) {
   const fmt = (s: string, vars: Record<string, string>) =>
     s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
 
+  const selectedOffers = useMemo(
+    () => (props.selectedOffers || []).filter(Boolean),
+    [props.selectedOffers]
+  );
+
+  const hasSelectedOffers = selectedOffers.length > 0;
+
+  const cartQueries = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selectedOffers
+            .map((o: any) =>
+              (
+                o?.name ??
+                o?.title ??
+                o?.productName ??
+                o?.itemName ??
+                ""
+              )
+                .toString()
+                .trim()
+            )
+            .filter(Boolean)
+        )
+      ).slice(0, 10),
+    [selectedOffers]
+  );
+
   const queries = useMemo(
-    () => (props.queries || []).map((s) => s.trim()).filter(Boolean).slice(0, 10),
-    [props.queries]
+    () =>
+      hasSelectedOffers
+        ? cartQueries
+        : (props.queries || []).map((s) => s.trim()).filter(Boolean).slice(0, 10),
+    [hasSelectedOffers, cartQueries, props.queries]
   );
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [data, setData] = useState<ApiResponse | null>(null);
 
+  const localData = useMemo<ApiResponse | null>(() => {
+    if (!hasSelectedOffers) return null;
+
+    const grouped = new Map<string, any[]>();
+
+    for (const o of selectedOffers) {
+      const storeName =
+        (
+          o?.storeName ??
+          o?.retailer ??
+          o?.shop ??
+          o?.chain ??
+          o?.store ??
+          (props.lang === "da" ? "Ukendt butik" : "Unknown store")
+        )
+          ?.toString()
+          .trim() || (props.lang === "da" ? "Ukendt butik" : "Unknown store");
+
+      if (!grouped.has(storeName)) grouped.set(storeName, []);
+      grouped.get(storeName)!.push(o);
+    }
+
+    const totalQueries = Math.max(queries.length, 1);
+
+    const stores: StoreRow[] = Array.from(grouped.entries())
+      .map(([store, items]) => {
+        const sampleOffers = items.map((o: any) => {
+          const priceVal =
+            parseOfferPrice(
+              o?.price ??
+                o?.currentPrice ??
+                o?.offerPrice ??
+                o?.salePrice ??
+                o?.priceText ??
+                o?.priceLabel ??
+                o?.currentPriceText
+            );
+
+          const name =
+            (
+              o?.name ??
+              o?.title ??
+              o?.productName ??
+              o?.itemName ??
+              (props.lang === "da" ? "Ukendt vare" : "Unknown item")
+            )
+              ?.toString()
+              .trim() || (props.lang === "da" ? "Ukendt vare" : "Unknown item");
+
+          const sourceUrl =
+            (
+              o?.sourceUrl ??
+              o?.url ??
+              o?.href ??
+              ""
+            )
+              ?.toString()
+              .trim() || "";
+
+          const validThrough =
+            (
+              o?.validThrough ??
+              o?.expiresAt ??
+              o?.endDate ??
+              o?.until ??
+              null
+            ) as string | null;
+
+          const image =
+            (
+              o?.image ??
+              o?.imageUrl ??
+              o?.img ??
+              o?.thumbnail ??
+              null
+            ) as string | null;
+
+          return {
+            name,
+            price: priceVal,
+            currency: "DKK",
+            validThrough,
+            sourceUrl,
+            image,
+          };
+        });
+
+        const matchedItems = Array.from(
+          new Set(
+            sampleOffers
+              .map((x) => (x.name || "").trim())
+              .filter(Boolean)
+          )
+        );
+
+        const numericPrices = sampleOffers
+          .map((x) => x.price)
+          .filter((x): x is number => typeof x === "number" && Number.isFinite(x));
+
+        const bestPrice = numericPrices.length ? Math.min(...numericPrices) : null;
+        const coverageCount = matchedItems.length;
+        const coveragePct = Math.round((coverageCount / totalQueries) * 100);
+
+        return {
+          store,
+          coverageCount,
+          coveragePct,
+          matchedItems,
+          sampleOffers,
+          bestPrice,
+        };
+      })
+      .sort((a, b) => {
+        if (b.coverageCount !== a.coverageCount) return b.coverageCount - a.coverageCount;
+        if (a.bestPrice === null && b.bestPrice === null) return 0;
+        if (a.bestPrice === null) return 1;
+        if (b.bestPrice === null) return -1;
+        return a.bestPrice - b.bestPrice;
+      });
+
+    return {
+      queries,
+      totalQueries: queries.length,
+      stores,
+    };
+  }, [hasSelectedOffers, selectedOffers, queries, props.lang]);
+
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
+      if (hasSelectedOffers) {
+        setLoading(false);
+        setErr(null);
+        setData(null);
+        return;
+      }
+
       if (queries.length === 0) {
         setData(null);
         setErr(null);
@@ -84,19 +267,16 @@ export default function StoreGuidePanel(props: { queries: string[];
     return () => {
       cancelled = true;
     };
-  }, [queries.join("|")]);
+  }, [hasSelectedOffers, queries.join("|")]);
 
-  const stores = data?.stores || [];
+  const stores = (hasSelectedOffers ? localData?.stores : data?.stores) || [];
   const top3 = stores.slice(0, 3);
 
   return (
-    <section className="mt-4 w-full rounded-2xl border border-black/10 bg-white/70 p-4">
+    <section className="w-full">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">{t(props.lang, "store_guide_title")}</h2>
-          <p className="text-sm opacity-70">
-            {queries.length ? fmt(t(props.lang, "store_guide_coverage_on"), { q: queries.join(", ")  }) : t(props.lang, "store_guide_no_missing_yet")}
-          </p>
         </div>
         <div className="text-sm opacity-70">{loading ? t(props.lang, "store_guide_loading") : fmt(t(props.lang, "store_guide_count"), { n: String(top3.length)  })}</div>
       </div>
@@ -118,7 +298,7 @@ export default function StoreGuidePanel(props: { queries: string[];
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold">{s.store}</div>
                 <div className="mt-1 text-xs opacity-70">
-                  Coverage: {s.coverageCount}/{queries.length} ({s.coveragePct}%)
+                  {props.lang === "da" ? `Du kan få ${s.coverageCount} af ${Math.max(queries.length, 1)} varer her` : `You can get ${s.coverageCount} of ${Math.max(queries.length, 1)} items here`}
                 </div>
               </div>
               {typeof s.bestPrice === "number" ? (
@@ -128,44 +308,28 @@ export default function StoreGuidePanel(props: { queries: string[];
               ) : null}
             </div>
 
-            {s.matchedItems?.length ? (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {s.matchedItems.slice(0, 8).map((m) => (
-                  <span
-                    key={m}
-                    className="rounded-full border border-black/10 bg-white px-2 py-1 text-xs opacity-80"
-                  >
-                    {m}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-
             {s.sampleOffers?.length ? (
-              <div className="mt-3 space-y-2">
-                {s.sampleOffers.slice(0, 3).map((o) => (
-                  <a
-                    key={o.sourceUrl}
-                    href={o.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 rounded-xl border border-black/10 bg-white p-2 hover:border-black/20"
-                  >
-                    {o.image ? (
-                      <img src={o.image} alt={o.name || "Tilbud"} className="h-10 w-10 rounded-lg object-cover" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-lg bg-black/5" />
-                    )}
-
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold">{o.name || "Ukendt vare"}</div>
-                      <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] opacity-70">
-                        <span>{formatDkk(o.price)}</span>
-                        {o.validThrough ? <span>til {isoToDaDate(o.validThrough) || o.validThrough}</span> : null}
-                      </div>
-                    </div>
-                  </a>
-                ))}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {s.sampleOffers
+                  .filter((o) => !!o.image)
+                  .slice(0, 6)
+                  .map((o, idx) => (
+                    <a
+                      key={`${o.sourceUrl || "offer"}-${idx}`}
+                      href={o.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block"
+                      title={o.name || undefined}
+                    >
+                      <img
+                        src={o.image as any}
+                        alt={o.name || "Tilbud"}
+                        className="h-12 w-12 rounded-xl object-cover border border-black/10 hover:border-black/20"
+                        loading="lazy"
+                      />
+                    </a>
+                  ))}
               </div>
             ) : null}
           </div>
