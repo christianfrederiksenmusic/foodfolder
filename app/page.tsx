@@ -10,7 +10,6 @@ import OffersPanel from "@/app/components/OffersPanel";
 import StoreGuidePanel from "@/app/components/StoreGuidePanel";
 import SaveRecipeButton from "@/app/components/SaveRecipeButton";
 
-
 function deriveOfferQueries(input: any): string[] {
   // Input can be: { missing }, { recipes }, { fridge }, etc.
   // We try to extract "missing ingredients" first; fallback to recipe ingredients.
@@ -130,7 +129,6 @@ function deriveOfferQueries(input: any): string[] {
   return uniq;
 }
 
-
 type ApiItem = {
   name: string;
   confidence?: number;
@@ -190,11 +188,9 @@ function stripWhitespace(s: string) {
   return (s ?? "").trim().replace(/\s+/g, "");
 }
 
-
 function normalizeItem(s: string) {
   return String(s ?? "").replace(/\s+/g, " ").trim();
 }
-
 
 function foldKeyDa(s: string): string {
   return (s || "")
@@ -408,7 +404,6 @@ export default function Page() {
   const [pantryOpen, setPantryOpen] = useState(false);
 const fileRef = useRef<HTMLInputElement | null>(null);
 
-
   const [originalDataUrl, setOriginalDataUrl] = useState("");
   const [jpegDataUrl, setJpegDataUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -461,7 +456,6 @@ const [constraints, setConstraints] = useState<string>(
   );
   const [recipeMode, setRecipeMode] = useState<"use-what-i-have" | "inspire-offers">("use-what-i-have");
 
-
   const [sha, setSha] = useState<string>("");
 
   const lastConfirmedKeyRef = useRef<string>("");
@@ -484,7 +478,6 @@ const [constraints, setConstraints] = useState<string>(
     ensureDaCanonicalList,
   } = useLangRuntime(allCanonicalForDisplay);
 
-  
   const ensureDaCanonicalListRef = useRef(ensureDaCanonicalList);
   useEffect(() => {
     ensureDaCanonicalListRef.current = ensureDaCanonicalList;
@@ -495,7 +488,6 @@ const [constraints, setConstraints] = useState<string>(
   const [missingTodayDa, setMissingTodayDa] = useState<string[]>([]);
   const [offerQueriesDa, setOfferQueriesDa] = useState<string[]>([]);
 
-  
   const missingTodayDaKey = useMemo(() => missingTodayDa.join("|"), [missingTodayDa]);
   const offerQueriesDaKey = useMemo(() => offerQueriesDa.join("|"), [offerQueriesDa]);
 useEffect(() => {
@@ -597,6 +589,7 @@ useEffect(() => {
           >
             {t(lang, "add_item")}
           </button>
+
         </div>
 
         <div className="mt-2 text-xs text-slate-500">{t(lang, "dedupe_hint")}</div>
@@ -633,7 +626,6 @@ useEffect(() => {
       setConstraints("");
     }
   }, [constraints]);
-
 
   useEffect(() => {
     let dead = false;
@@ -783,7 +775,6 @@ const originalBytes = useMemo(
         meta: json?.meta,
       });
     
-      
       try {
         const pantry = loadPantryLocal();
         setSuggestions(deriveSuggestions(items.map((x) => x.name), pantry, lang));
@@ -818,7 +809,6 @@ const originalBytes = useMemo(
       return [];
       }
       })();
-
 
       const modeInstruction =
         recipeMode === "use-what-i-have"
@@ -931,7 +921,6 @@ const originalBytes = useMemo(
     setShoppingItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  
   function addToShoppingFromPantry(item: string) {
     const it = normalizeItem(item);
     if (!it) return;
@@ -989,7 +978,6 @@ async function addShopping() {
     setShoppingItems((prev) => dedupeCaseInsensitive([...(prev || []), ...filtered]));
   }
 
-
   const sortedItems = useMemo(() => {
     if (!apiResult || apiResult.ok !== true) return [];
     const copy = [...apiResult.items];
@@ -1016,23 +1004,43 @@ async function addShopping() {
       </div>
 
       <div className="mx-auto max-w-6xl px-5 py-10">
-        <header className="mb-8 flex items-start justify-between gap-6">
-          <div>
-<div className="text-xs font-semibold tracking-[0.18em] text-slate-500">
-              {t(lang, "brand_line")}
+          <header className="mb-8">
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src="/branding/quartigo-mark-green.svg"
+                alt="Quartigo"
+            className="mt-0.5 h-40 w-40 shrink-0 -rotate-90 sm:h-48 sm:w-48"
+              />
+              <div
+                className="text-2xl font-semibold leading-tight text-[#B6CA8E] sm:text-3xl"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Smart Shopping
+              </div>
+
+
+              <div className="w-full text-center">
+
+                <div className="mt-1">
+                  <h1 className="font-semibold leading-tight text-slate-900 w-full text-center text-[5.5rem] sm:text-[8.5rem]" style={{ fontFamily: "var(--font-heading)" }}>
+                    Quartigo
+                  </h1>
+                </div>
+
+                    <div className="mt-4 flex w-full flex-col items-center">
+                      <ol className="space-y-1 text-center">
+                        <li className="text-base font-medium text-slate-700 sm:text-lg">Skab overblik over hvad du har</li>
+                        <li className="flex justify-center text-xl leading-none text-[#B6CA8E] sm:text-2xl" aria-hidden="true">↓</li>
+                        <li className="text-base font-medium text-slate-700 sm:text-lg">Få inspiration til opskrifter</li>
+                        <li className="flex justify-center text-xl leading-none text-[#B6CA8E] sm:text-2xl" aria-hidden="true">↓</li>
+                        <li className="text-base font-medium text-slate-700 sm:text-lg">Find de bedste tilbud</li>
+                        <li className="flex justify-center text-xl leading-none text-[#B6CA8E] sm:text-2xl" aria-hidden="true">↓</li>
+                        <li className="text-base font-medium text-slate-700 sm:text-lg">Planlæg din butikstur</li>
+                      </ol>
+                    </div>
+              </div>
             </div>
-<h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-900">
-              Smart Shopping
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-slate-600">
-              {t(lang, "subtitle")}
-            </p>
-
-
-          </div>
-
-          
-        </header>
+          </header>
 
         <section className="space-y-6">
           <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
@@ -1459,7 +1467,6 @@ async function addShopping() {
                   )}
                 </div>
 
-
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <div className="text-sm font-semibold text-slate-900">{t(lang, "shopping_list_title")}</div>
                   <div className="mt-1 text-xs text-slate-600">{t(lang, "shopping_list_desc")}</div>
@@ -1541,7 +1548,6 @@ async function addShopping() {
                     <OffersPanel lang={lang} queries={offerQueriesDa} displayQueries={offerQueriesDisplay} />
                   </div>
                 </div>
-
 
               </div>
             </div>
@@ -1663,13 +1669,31 @@ async function addShopping() {
                 </div>
               </div>
             </div>
+
           </div>
 
         </section>
 
       </div>
-    
 
+        <div className="pb-20 pt-10 sm:pb-24 sm:pt-14">
+          <div className="flex justify-end pr-14 sm:pr-16">
+            <div className="inline-flex items-center gap-3">
+              <img
+                src="/branding/quartigo-mark-green.svg"
+                alt="Quartigo logo"
+                className="h-14 w-14 shrink-0 -rotate-90 sm:h-16 sm:w-16"
+              />
+              <span
+                className="text-3xl font-semibold leading-none text-[#B6CA8E] sm:text-4xl"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Quartigo
+              </span>
+            </div>
+          </div>
+        </div>
+    
       <PantryModal
         lang={lang}
         open={pantryOpen}

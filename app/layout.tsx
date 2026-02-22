@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, DM_Sans, Sora } from "next/font/google";
+import { Geist, Geist_Mono, DM_Sans, Comfortaa } from "next/font/google";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-body" });
-const sora = Sora({ subsets: ["latin"], variable: "--font-heading" });
+const comfortaa = Comfortaa({ subsets: ["latin"], variable: "--font-heading", weight: ["700"] });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="da">
       <body
-        className={`${dmSans.variable} ${sora.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${dmSans.variable} ${comfortaa.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-body)" }}
       >
         {children}
