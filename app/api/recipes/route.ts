@@ -461,7 +461,22 @@ ${pantryHardRule}` : pantryHardRule;
 
   if (!a1.ok) {
     const apiError = a1.top?.error?.message || a1.top?.error || a1.top || a1.rawText;
-    return jsonNoStore({ ok: false, error: `Anthropic error ${a1.status}`, raw: apiError }, { status: 502 });
+    const debug = {
+      stage: "a1",
+      status: a1.status,
+      pantryOnlyMode,
+      languageCode,
+      model,
+      fridge_count: fridge.length,
+      pantry_count: pantry.length,
+      constraints_len: String(constraints || "").length,
+      prompt1_len: String(prompt1 || "").length,
+      fridge_sample: fridge.slice(0, 10),
+      pantry_sample: pantry.slice(0, 10),
+      body_keys: Object.keys(body || {}),
+    };
+    console.error("[api.recipes] Anthropic a1 error", { debug, apiError });
+    return jsonNoStore({ ok: false, error: `Anthropic error ${a1.status}`, raw: apiError, debug }, { status: 502 });
   }
 
   const t1 = a1.top ? extractAssistantText(a1.top) : a1.rawText;
@@ -508,7 +523,7 @@ ${pantryHardRule}` : pantryHardRule;
   }
 
   // Repair pass (structure-only)
-  const repairPrompt = `Fix the output to match the JSON shape strictly.
+  let repairPrompt = `Fix the output to match the JSON shape strictly.
 Rules: JSON only. recipes[].ingredients >= 5 with amount+item. recipes[].steps >= 5. recipes[].missing_items (array, can be empty). Remove duplicates.
 Output language MUST be ${languageName} (code: ${languageCode}). ALL text fields must be in ${languageName}.
 CRITICAL: Any ingredient mentioned in title/summary/steps MUST be listed in ingredients[] or missing_items[].
@@ -518,11 +533,37 @@ Broken output:
 ${t1 || "(empty)"}
 `;
 
+  if (pantryOnlyMode) {
+    // Pantry-only repair MUST enforce empty missing_items, otherwise everything gets filtered out.
+    const pantryRepairRule =
+      "PANTRY MODE (HARD RULE): Use ONLY ingredients from Fridge ingredients + Pantry items. " +
+      "Do NOT invent extra ingredients. missing_items MUST be an empty array []. ";
+    repairPrompt = repairPrompt.replace(
+      "Rules:",
+      "Rules:\\n" + pantryRepairRule + "\\n"
+    );
+}
+
   const a2 = await callAnthropic(apiKey, model, repairPrompt, 0.0);
 
   if (!a2.ok) {
     const apiError = a2.top?.error?.message || a2.top?.error || a2.top || a2.rawText;
-    return jsonNoStore({ ok: false, error: `Anthropic error ${a2.status}`, raw: apiError }, { status: 502 });
+    const debug = {
+      stage: "a2_repair",
+      status: a2.status,
+      pantryOnlyMode,
+      languageCode,
+      model,
+      fridge_count: fridge.length,
+      pantry_count: pantry.length,
+      constraints_len: String(constraints || "").length,
+      t1_len: String(t1 || "").length,
+      repairPrompt_len: String(repairPrompt || "").length,
+      fridge_sample: fridge.slice(0, 10),
+      pantry_sample: pantry.slice(0, 10),
+    };
+    console.error("[api.recipes] Anthropic a2 error", { debug, apiError });
+    return jsonNoStore({ ok: false, error: `Anthropic error ${a2.status}`, raw: apiError, debug }, { status: 502 });
   }
 
   const t2 = a2.top ? extractAssistantText(a2.top) : a2.rawText;
