@@ -1097,7 +1097,7 @@ async function addOfferToShopping(offer: any) {
             className="mt-0.5 h-40 w-40 shrink-0 -rotate-90 sm:h-48 sm:w-48"
               />
               <div
-                className="text-2xl font-semibold leading-tight text-[#B6CA8E] sm:text-3xl"
+                className="text-2xl font-semibold leading-tight text-[#B8D486] sm:text-3xl"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
                 Smart Shopping
@@ -1115,11 +1115,11 @@ async function addOfferToShopping(offer: any) {
                     <div className="mt-4 flex w-full flex-col items-center">
                       <ol className="space-y-1 text-center">
                         <li className="text-base font-medium text-slate-700 sm:text-lg">Skab overblik over hvad du har</li>
-                        <li className="flex justify-center text-xl leading-none text-[#B6CA8E] sm:text-2xl" aria-hidden="true">↓</li>
+                        <li className="flex justify-center text-xl leading-none text-[#B8D486] sm:text-2xl" aria-hidden="true">↓</li>
                         <li className="text-base font-medium text-slate-700 sm:text-lg">Få inspiration til opskrifter</li>
-                        <li className="flex justify-center text-xl leading-none text-[#B6CA8E] sm:text-2xl" aria-hidden="true">↓</li>
+                        <li className="flex justify-center text-xl leading-none text-[#B8D486] sm:text-2xl" aria-hidden="true">↓</li>
                         <li className="text-base font-medium text-slate-700 sm:text-lg">Find de bedste tilbud</li>
-                        <li className="flex justify-center text-xl leading-none text-[#B6CA8E] sm:text-2xl" aria-hidden="true">↓</li>
+                        <li className="flex justify-center text-xl leading-none text-[#B8D486] sm:text-2xl" aria-hidden="true">↓</li>
                         <li className="text-base font-medium text-slate-700 sm:text-lg">Planlæg din butikstur</li>
                       </ol>
                     </div>
@@ -1128,8 +1128,8 @@ async function addOfferToShopping(offer: any) {
           </header>
 
         <section className="space-y-6">
-          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
-            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
+          <div className="rounded-3xl border border-[#B8D486]/50 bg-[#B8D486]/14 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-[#B8D486]/80 bg-[#B8D486]/42 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
                   <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
@@ -1321,8 +1321,8 @@ async function addOfferToShopping(offer: any) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
-            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
+          <div className="rounded-3xl border border-[#B8D486]/50 bg-[#B8D486]/14 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-[#B8D486]/80 bg-[#B8D486]/42 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
                   <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
@@ -1498,8 +1498,8 @@ async function addOfferToShopping(offer: any) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
-            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
+          <div className="rounded-3xl border border-[#B8D486]/50 bg-[#B8D486]/14 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-[#B8D486]/80 bg-[#B8D486]/42 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
                   <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
@@ -1655,8 +1655,8 @@ async function addOfferToShopping(offer: any) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-yellow-200/80 bg-yellow-50/85 shadow-sm backdrop-blur">
-            <div className="rounded-t-3xl border-b border-yellow-200/80 bg-yellow-100/80 px-6 py-5">
+          <div className="rounded-3xl border border-[#B8D486]/50 bg-[#B8D486]/14 shadow-sm backdrop-blur">
+            <div className="rounded-t-3xl border-b border-[#B8D486]/80 bg-[#B8D486]/42 px-6 py-5">
               <div className="text-center">
                 <div className="flex justify-center">
                   <span className="rounded-full border border-emerald-600 bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white">
@@ -1905,7 +1905,7 @@ async function addOfferToShopping(offer: any) {
                 className="h-14 w-14 shrink-0 -rotate-90 sm:h-16 sm:w-16"
               />
               <span
-                className="text-3xl font-semibold leading-none text-[#B6CA8E] sm:text-4xl"
+                className="text-3xl font-semibold leading-none text-[#B8D486] sm:text-4xl"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
                 Quartigo
